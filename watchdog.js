@@ -987,9 +987,9 @@ console.log(`Flux daemon current: ${zelcash_remote_version.trim()} installed: ${
      console.log('Local version: '+zelcash_local_version.trim());
      console.log('Remote version: '+zelcash_remote_version.trim());
 
-     var  update_info = shell.exec("ps aux | grep 'apt' | wc -l",{ silent: true }).stdout;
+     var  update_info = shell.exec("ps auxc | grep 'apt' | wc -l",{ silent: true }).stdout;
 
-      if ( update_info > 2 ) {
+      if ( update_info > 0 ) {
 
         shell.exec("sudo killall apt",{ silent: true }).stdout;
         shell.exec("sudo killall apt-get",{ silent: true }).stdout;
@@ -1116,9 +1116,9 @@ async function flux_check() {
   console.log('UTC: '+data_time_utc+' | LOCAL: '+local );
   console.log('=================================================================');
 
-var  update_info = shell.exec("ps aux | grep 'apt' | wc -l",{ silent: true }).stdout;
+var  update_info = shell.exec("ps auxc | grep 'apt' | wc -l",{ silent: true }).stdout;
 
-if ( update_info > 2 ) {
+if ( update_info > 0 ) {
   console.log('Update detected...');
   console.log('Watchdog in sleep mode => '+data_time_utc);
   console.log('=================================================================');
