@@ -1588,18 +1588,18 @@ return;
 
 
 if ( zelbench_benchmark_status == "toaster" || zelbench_benchmark_status == "failed" ){
+  
+  if ( zelbench_error.indexOf("HW requirements") == "-1" ) {     
   ++zelbench_counter;
   var error_line=shell.exec("egrep -a --color 'Failed' /home/$USER/.fluxbenchmark/debug.log | tail -1 | sed 's/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.//'",{ silent: true });
   error('Benchmark problem detected! Fluxbench status: '+zelbench_benchmark_status);
   error('Reason: '+error_line.trim());
   console.log('Benchmark problem detected! Fluxbench status: '+zelbench_benchmark_status);
   console.log('Reason: '+error_line.trim());
-  if ( typeof action  == "undefined" || action == "1" ){
-
+    if ( typeof action  == "undefined" || action == "1" ){
     console.log(data_time_utc+' => Fluxbench restarting...');
     shell.exec(`${bench_cli} restartnodebenchmarks`,{ silent: true });
     await discord_hook("Benchmark restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
-
     // Fix action benchmark notification telegram
     var emoji_title = '\u{26A1}';
     var emoji_fix = '\u{1F528}';
@@ -1607,7 +1607,7 @@ if ( zelbench_benchmark_status == "toaster" || zelbench_benchmark_status == "fai
     var field_type = 'Info: ';
     var msg_text = 'Benchmark restarted!';
     await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
-
+    }
   }
 }
 else{
