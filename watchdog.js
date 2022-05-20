@@ -1588,9 +1588,8 @@ return;
 
 
 if ( zelbench_benchmark_status == "toaster" || zelbench_benchmark_status == "failed" ){
-  
+   ++zelbench_counter;
   if ( zelbench_error.indexOf("HW requirements") == "-1" ) {     
-  ++zelbench_counter;
   var error_line=shell.exec("egrep -a --color 'Failed' /home/$USER/.fluxbenchmark/debug.log | tail -1 | sed 's/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.//'",{ silent: true });
   error('Benchmark problem detected! Fluxbench status: '+zelbench_benchmark_status);
   error('Reason: '+error_line.trim());
