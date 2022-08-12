@@ -148,7 +148,7 @@ return;
        kda_sync = -1;
        kda_lock=1;
        console.log(`KDA sync problem detected! Height: ${height}`);
-       error('KDA node sync freez detected!');
+       /*error('KDA node sync freez detected!');
        await discord_hook("KDA node sync freez detected!",web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
        // KDA error notification telegram
        var emoji_title = '\u{1F6A8}';
@@ -156,7 +156,7 @@ return;
        var info_type = 'Alert '+emoji_bell;
        var field_type = 'Error: ';
        var msg_text = 'KDA node sync freez detected!';
-       await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+       await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
 
        sleep.sleep(3);
 
@@ -164,14 +164,14 @@ return;
 
          reset_height = height;
          shell.exec(`docker restart kadenachainwebnode`,{ silent: true }).stdout;
-         await discord_hook("KDA node restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
+         /*await discord_hook("KDA node restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
          // Fix action telegram
          var emoji_title = '\u{26A1}';
          var emoji_fix = '\u{1F528}';
          var info_type = 'Fix Action '+emoji_fix;
          var field_type = 'Info: ';
          var msg_text = 'KDA node restarted!';
-         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
          console.log(`Restarting container....`);
 
        }
@@ -217,7 +217,7 @@ return;
     if ( not_responding == 2 ) {
 
      kda_sync = -1;
-     error(`KDA node height unavailable! KDA node not working correct!`);
+     /*error(`KDA node height unavailable! KDA node not working correct!`);
      await discord_hook(`KDA node not working correct!\nDocker status: **${docker_status.trim()}**`,web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
      // KDA error notification telegram
      var emoji_title = '\u{1F6A8}';
@@ -225,19 +225,19 @@ return;
      var info_type = 'Alert '+emoji_bell;
      var field_type = 'Error: ';
      var msg_text = "KDA node not working correct! \nDocker status: <b>"+docker_status.trim()+"</b>";
-     await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+     await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
 
      if ( typeof action  == "undefined" || action == "1" ){
         fix_tiggered=1;
         shell.exec(`docker restart kadenachainwebnode`,{ silent: true }).stdout;
-        await discord_hook("KDA node restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
+        /*await discord_hook("KDA node restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
         // Fix action telegram
         var emoji_title = '\u{26A1}';
         var emoji_fix = '\u{1F528}';
         var info_type = 'Fix Action '+emoji_fix;
         var field_type = 'Info: ';
         var msg_text = 'KDA node restarted!';
-        await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+        await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
         console.log(`Restarting container....`);
      }
 
@@ -259,14 +259,14 @@ return;
          if ( kda_sleep == 0 ) {
 
            kda_sleep = 1;
-           await discord_hook("KDA Watchdog in sleep mode..\nManual operation needed!",web_hook_url,ping,'Alert','#EA1414','Info','watchdog_manual1.png',label);
+           /*await discord_hook("KDA Watchdog in sleep mode..\nManual operation needed!",web_hook_url,ping,'Alert','#EA1414','Info','watchdog_manual1.png',label);
            // KDA Watchdog in sleep mode notification telegram
            var emoji_title = '\u{1F6A8}';
            var emoji_bell = '\u{1F514}';
            var info_type = 'Alert '+emoji_bell;
            var field_type = 'Info: ';
            var msg_text = "<b>KDA Watchdog in sleep mode!</b> \n\u{203C} <b>Manual operation needed</b> \u{203C}";
-           await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+           await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
 
          }
       }
@@ -292,14 +292,14 @@ if ( height != -1 ){
    fix_tiggered=0;
 
    if ( typeof action  == "undefined" || action == "1" ){
-      await discord_hook("KDA node fixed! Apps responding...",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
+      /*await discord_hook("KDA node fixed! Apps responding...",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
       // Daemon fixed notification telegram
       var emoji_title = '\u{1F4A1}';
       var emoji_fixed = '\u{2705}';
       var info_type = 'Fixed Info '+emoji_fixed;
       var field_type = 'Info: ';
       var msg_text = "KDA node fixed!";
-      await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+      await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
    }
 
  }
@@ -311,14 +311,14 @@ if ( height != -1 ){
     if ( kda_lock == 1 && reset_height != height ){
 
       if ( typeof action  == "undefined" || action == "1" ){
-        await discord_hook("KDA node sync fixed!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
+        /*await discord_hook("KDA node sync fixed!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
         // Daemon fixed notification telegram
         var emoji_title = '\u{1F4A1}';
         var emoji_fixed = '\u{2705}';
         var info_type = 'Fixed Info '+emoji_fixed;
         var field_type = 'Info: ';
         var msg_text = 'KDA node sync fixed!';
-        await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+        await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
       }
 
     }
@@ -341,7 +341,7 @@ if ( height != -1 ){
 
          no_sync = 1
          console.log(`KDA node not synced with network, diff: ${network_diff}`);
-         error(`KDA node not synced with network, diff: ${network_diff}`);
+         /*error(`KDA node not synced with network, diff: ${network_diff}`);
          await discord_hook(`KDA node not synced, diff:**${network_diff}**`,web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
          // KDA error notification telegram
          var emoji_title = '\u{1F6A8}';
@@ -349,7 +349,7 @@ if ( height != -1 ){
          var info_type = 'Alert '+emoji_bell;
          var field_type = 'Error: ';
          var msg_text = "KDA node not synced, diff: <b>"+network_diff+"</b>";
-         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
          sleep.sleep(3);
 
        }
