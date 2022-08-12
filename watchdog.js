@@ -129,7 +129,7 @@ kadenaData3 = kadenaData3.data.height;
 
 async function kda_check(){
 
-let kda_docker_check = await shell.exec(`docker ps --filter name=kadenachainwebnode | wc -l`,{ silent: true }).stdout;
+let kda_docker_check = await shell.exec(`docker ps --filter name=fluxkadenachainwebnode | wc -l`,{ silent: true }).stdout;
 
 if ( kda_docker_check != 2 ){
 console.log(`KDA docker apps not detected!`);
@@ -163,9 +163,9 @@ return;
        if ( typeof action  == "undefined" || action == "1" ){
 
          reset_height = height;
-         shell.exec(`docker restart kadenachainwebnode`,{ silent: true }).stdout;
+         shell.exec(`docker restart fluxkadenachainwebnode`,{ silent: true }).stdout;
          setTimeout(() => {
-          shell.exec(`docker restart KadenaChainWebData`,{ silent: true }).stdout;
+          shell.exec(`docker restart fluxKadenaChainWebData`,{ silent: true }).stdout;
          }, 20 * 60 * 1000); // In case KadenaChainWebData is installed restart the app after 20m.
          /*await discord_hook("KDA node restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
          // Fix action telegram
@@ -207,7 +207,7 @@ return;
 
  if (  height == -1 && kda_sync != -1) {
 
-   let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' kadenachainwebnode`,{ silent: true });
+   let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' fluxkadenachainwebnode`,{ silent: true });
 
 
    console.log(`KDA docker status: ${docker_status.trim()}`);
@@ -232,9 +232,9 @@ return;
 
      if ( typeof action  == "undefined" || action == "1" ){
         fix_tiggered=1;
-        shell.exec(`docker restart kadenachainwebnode`,{ silent: true }).stdout;
+        shell.exec(`docker restart fluxkadenachainwebnode`,{ silent: true }).stdout;
         setTimeout(() => {
-          shell.exec(`docker restart KadenaChainWebData`,{ silent: true }).stdout;
+          shell.exec(`docker restart fluxKadenaChainWebData`,{ silent: true }).stdout;
         }, 20 * 60 * 1000); // In case KadenaChainWebData is installed restart the app after 20m.
         /*await discord_hook("KDA node restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
         // Fix action telegram
@@ -277,7 +277,7 @@ return;
          }
       }
 
-       let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' kadenachainwebnode`,{ silent: true });
+       let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' fluxkadenachainwebnode`,{ silent: true });
        console.log(`Error: KDA node not working correct!`);
        console.log(`KDA docker status: ${docker_status.trim()}`);
        console.log('=================================================================');
@@ -368,7 +368,7 @@ if ( height != -1 ){
     console.log(`Awaiting for full sync with KDA network...`);
   }
 
-  let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' kadenachainwebnode`,{ silent: true });
+  let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' fluxkadenachainwebnode`,{ silent: true });
   console.log(`KDA docker status: ${docker_status.trim()}`);
   console.log('=================================================================');
 
