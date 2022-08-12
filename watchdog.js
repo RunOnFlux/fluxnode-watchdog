@@ -70,7 +70,7 @@ async function getKadenaNodeHeight(ip) {
       rejectUnauthorized: false
     });
 
-    const kadenaData = await axios.get(`https://${ip}:30004/chainweb/0.0/mainnet01/cut`, { httpsAgent: agent , timeout: 5000});
+    const kadenaData = await axios.get(`https://${ip}:31350/chainweb/0.0/mainnet01/cut`, { httpsAgent: agent , timeout: 5000});
     return kadenaData.data.height;
   } catch (e) {
     // console.log(`${e}`);
@@ -129,7 +129,7 @@ kadenaData3 = kadenaData3.data.height;
 
 async function kda_check(){
 
-let kda_docker_check = await shell.exec(`docker ps --filter name=zelKadenaChainWebNode | wc -l`,{ silent: true }).stdout;
+let kda_docker_check = await shell.exec(`docker ps --filter name=kadenachainwebnode | wc -l`,{ silent: true }).stdout;
 
 if ( kda_docker_check != 2 ){
 console.log(`KDA docker apps not detected!`);
@@ -163,7 +163,7 @@ return;
        if ( typeof action  == "undefined" || action == "1" ){
 
          reset_height = height;
-         shell.exec(`docker restart zelKadenaChainWebNode`,{ silent: true }).stdout;
+         shell.exec(`docker restart kadenachainwebnode`,{ silent: true }).stdout;
          await discord_hook("KDA node restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
          // Fix action telegram
          var emoji_title = '\u{26A1}';
@@ -204,7 +204,7 @@ return;
 
  if (  height == -1 && kda_sync != -1) {
 
-   let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' zelKadenaChainWebNode`,{ silent: true });
+   let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' kadenachainwebnode`,{ silent: true });
 
 
    console.log(`KDA docker status: ${docker_status.trim()}`);
@@ -229,7 +229,7 @@ return;
 
      if ( typeof action  == "undefined" || action == "1" ){
         fix_tiggered=1;
-        shell.exec(`docker restart zelKadenaChainWebNode`,{ silent: true }).stdout;
+        shell.exec(`docker restart kadenachainwebnode`,{ silent: true }).stdout;
         await discord_hook("KDA node restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
         // Fix action telegram
         var emoji_title = '\u{26A1}';
@@ -271,7 +271,7 @@ return;
          }
       }
 
-       let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' zelKadenaChainWebNode`,{ silent: true });
+       let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' kadenachainwebnode`,{ silent: true });
        console.log(`Error: KDA node not working correct!`);
        console.log(`KDA docker status: ${docker_status.trim()}`);
        console.log('=================================================================');
@@ -362,7 +362,7 @@ if ( height != -1 ){
     console.log(`Awaiting for full sync with KDA network...`);
   }
 
-  let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' zelKadenaChainWebNode`,{ silent: true });
+  let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' kadenachainwebnode`,{ silent: true });
   console.log(`KDA docker status: ${docker_status.trim()}`);
   console.log('=================================================================');
 
