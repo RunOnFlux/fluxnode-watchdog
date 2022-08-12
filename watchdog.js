@@ -164,6 +164,9 @@ return;
 
          reset_height = height;
          shell.exec(`docker restart kadenachainwebnode`,{ silent: true }).stdout;
+         setTimeout(() => {
+          shell.exec(`docker restart KadenaChainWebData`,{ silent: true }).stdout;
+         }, 20 * 60 * 1000); // In case KadenaChainWebData is installed restart the app after 20m.
          /*await discord_hook("KDA node restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
          // Fix action telegram
          var emoji_title = '\u{26A1}';
@@ -230,6 +233,9 @@ return;
      if ( typeof action  == "undefined" || action == "1" ){
         fix_tiggered=1;
         shell.exec(`docker restart kadenachainwebnode`,{ silent: true }).stdout;
+        setTimeout(() => {
+          shell.exec(`docker restart KadenaChainWebData`,{ silent: true }).stdout;
+        }, 20 * 60 * 1000); // In case KadenaChainWebData is installed restart the app after 20m.
         /*await discord_hook("KDA node restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
         // Fix action telegram
         var emoji_title = '\u{26A1}';
