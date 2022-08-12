@@ -86,7 +86,7 @@ async function getKadenaNetworkHeight() {
       rejectUnauthorized: false
     });
 
-    var kadenaData1 = await axios.get(`https://us-e2.chainweb.com/chainweb/0.0/mainnet01/cut`, { httpsAgent: agent , timeout: 5000});
+    var kadenaData1 = await axios.get(`https://us-e1.chainweb.com/chainweb/0.0/mainnet01/cut`, { httpsAgent: agent , timeout: 5000});
     kadenaData1 = kadenaData1.data.height;
    // console.log(`Connection 1 ${kadenaData1}`)
 
@@ -101,7 +101,7 @@ async function getKadenaNetworkHeight() {
       rejectUnauthorized: false
     });
 
-    var kadenaData2 = await axios.get(`https://us-w1.chainweb.com/chainweb/0.0/mainnet01/cut`, { httpsAgent: agent , timeout: 5000});
+    var kadenaData2 = await axios.get(`https://us-w2.chainweb.com/chainweb/0.0/mainnet01/cut`, { httpsAgent: agent , timeout: 5000});
 kadenaData2 = kadenaData2.data.height;
 //console.log(`Connection 2 ${kadenaData2}`);
  } catch (e) {
