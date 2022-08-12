@@ -239,10 +239,15 @@ return;
      if ( typeof action  == "undefined" || action == "1" ){
         fix_tiggered=1;
         shell.exec(`docker restart fluxkadenachainwebnode`,{ silent: true }).stdout;
-        if 
-        setTimeout(() => {
-          shell.exec(`docker restart fluxKadenaChainWebData`,{ silent: true }).stdout;
-        }, 20 * 60 * 1000); // In case KadenaChainWebData is installed restart the app after 20m.
+       
+        let kda_date_docker_check = await shell.exec(`docker ps --filter name=fluxKadenaChainWebData | wc -l`,{ silent: true }).stdout;
+       
+        if ( kda_date_docker_check == 2 ){
+          setTimeout(() => {
+            shell.exec(`docker restart fluxKadenaChainWebData`,{ silent: true }).stdout;
+          }, 20 * 60 * 1000); // In case KadenaChainWebData is installed restart the app after 20m.
+        }
+       
         /*await discord_hook("KDA node restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
         // Fix action telegram
         var emoji_title = '\u{26A1}';
