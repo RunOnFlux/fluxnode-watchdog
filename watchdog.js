@@ -43,7 +43,6 @@ function between(min, max) {
     Math.random() * (max - min) + min
   )
 }
-
 async function job_creator(){
 
   ++job_count;
@@ -63,13 +62,11 @@ async function job_creator(){
   }
 
 }
-
 async function getKadenaNodeHeight(ip) {
   try {
       const agent = new https.Agent({
       rejectUnauthorized: false
     });
-
     const kadenaData = await axios.get(`https://${ip}:31350/chainweb/0.0/mainnet01/cut`, { httpsAgent: agent , timeout: 5000});
     return kadenaData.data.height;
   } catch (e) {
@@ -385,25 +382,21 @@ if ( height != -1 ){
   console.log('=================================================================');
 
 }
-
 async function Myip(){
-
   const check_list = ['ifconfig.me', 'api4.my-ip.io/ip', 'checkip.amazonaws.com' , 'api.ipify.org'];
   var MyIP = null;
-
   for (const [index, val] of check_list.entries()) {
+    MyIP = await shell.exec(`curl -sk -m 10 https://${val} | tr -dc '[:alnum:].'`,{ silent: true }).stdout;
 
-     MyIP = await shell.exec(`curl -sk -m 10 https://${val} | tr -dc '[:alnum:].'`,{ silent: true }).stdout;
-
-     if ( MyIP.length > 5){
-        break;
-     }
+    if ( MyIP.length > 5){
+      break;
+    }
 
   }
 
   if ( MyIP != "" ){
     h_IP=MyIP;
-    // console.log(`Saved IP for historical usage.`);
+    /* console.log(`Saved IP for historical usage.`); */
   }
 
   if ( MyIP == "" ){
@@ -413,8 +406,6 @@ async function Myip(){
 
 return MyIP;
 }
-
-
 async function discord_hook(node_msg,web_hook_url,ping,title,color,field_name,thumbnail_png,label) {
 
   if ( typeof web_hook_url !== "undefined" && web_hook_url !== "0" ) {
@@ -492,17 +483,13 @@ async function discord_hook(node_msg,web_hook_url,ping,title,color,field_name,th
 
    }
 
- }
-
-
+}
 function max() {
     var args = Array.prototype.slice.call(arguments);
     return Math.max.apply(Math, args.filter(function(val) {
        return !isNaN(val);
     }));
 }
-
-
 async function Check_Sync(height,time) {
 
   // var exec_comment1=`curl -sk -m 8 https://explorer.flux.zelcore.io/api/status?q=getInfo | jq '.info.blocks'`
@@ -590,8 +577,6 @@ async function Check_Sync(height,time) {
 
   }
 }
-
-
 if (fs.existsSync(path)) {
 
   var  home_dir = shell.exec("echo $HOME",{ silent: true }).stdout;
@@ -619,27 +604,25 @@ if (fs.existsSync(path)) {
 
 
   if (fs.existsSync(zelcash_path)) {
-   var tx_hash = shell.exec("grep -w zelnodeoutpoint "+zelcash_path+" | sed -e 's/zelnodeoutpoint=//'",{ silent: true }).stdout;
-   var exec_comment = `${daemon_cli} decoderawtransaction $(${daemon_cli} getrawtransaction ${tx_hash} ) | jq '.vout[].value' | egrep '10000|25000|100000'`
-   var type = shell.exec(`${exec_comment}`,{ silent: true }).stdout;
+    var tx_hash = shell.exec("grep -w zelnodeoutpoint "+zelcash_path+" | sed -e 's/zelnodeoutpoint=//'",{ silent: true }).stdout;
+    var exec_comment = `${daemon_cli} decoderawtransaction $(${daemon_cli} getrawtransaction ${tx_hash} ) | jq '.vout[].value' | egrep '1000|12500|'`
+    var type = shell.exec(`${exec_comment}`,{ silent: true }).stdout;
+    switch(Number(type.trim())){
+      case 1000:
+      var  tire_name="CUMULUS";
+      break;
 
-   switch(Number(type.trim())){
-       case 10000:
-       var  tire_name="CUMULUS";
-       break;
+      case 12500:
+      var  tire_name="NIMBUS";
+      break;
 
-       case 25000:
-       var  tire_name="NIMBUS";
-       break;
+      case 40000:
+      var  tire_name="STRATUS";
+      break;
 
-       case 100000:
-       var  tire_name="STRATUS";
-       break;
-
-       default:
-       var  tire_name="UNKNOW";
-
-  }
+      default:
+      var  tire_name="UNKNOW";
+    }
 
 } else {
 
@@ -706,7 +689,8 @@ console.log('=> FluxOS:  enabled');
 console.log('=> FluxOS:  disabled');
 }
 console.log('=================================================================');
-} else {
+} 
+else {
 
   var  home_dir = shell.exec("echo $HOME",{ silent: true }).stdout;
   var  zelcash_path = `${home_dir.trim()}/.zelcash/zelcash.conf`;
@@ -762,30 +746,30 @@ console.log('=================================================================')
 } else {
     var eps_limit = 0;
     var  tire_name="UNKNOW";
-  }
+}
 
 
-  const dataToWrite = `module.exports = {
-    tier_eps_min: '${eps_limit}',
-    zelflux_update: '0',
-    zelcash_update: '0',
-    zelbench_update: '0',
-    action: '1',
-    ping: '0';
-    web_hook_url: '0';
-    telegram_alert: '0';
-    telegram_bot_token: '0';
-    telegram_chat_id: '0'
+const dataToWrite = `module.exports = {
+  tier_eps_min: '${eps_limit}',
+  zelflux_update: '0',
+  zelcash_update: '0',
+  zelbench_update: '0',
+  action: '1',
+  ping: '0';
+  web_hook_url: '0';
+  telegram_alert: '0';
+  telegram_bot_token: '0';
+  telegram_chat_id: '0'
 }`;
 
 console.log('Creating config file...');
 console.log("========================");
 
- const userconfig = fs.createWriteStream(path);
-      userconfig.once('open', () => {
-      userconfig.write(dataToWrite);
-      userconfig.end();
-    });
+const userconfig = fs.createWriteStream(path);
+  userconfig.once('open', () => {
+  userconfig.write(dataToWrite);
+  userconfig.end();
+});
 
 sleep.sleep(3);
 var config = require('./config.js');
@@ -845,9 +829,6 @@ console.log('=> FluxOS:  disabled');
 console.log('=================================================================');
 
 }
-
-
-
 async function send_telegram_msg(emoji_title,info_type,field_type,msg_text,label) {
 
   var telegram_alert = config.telegram_alert;
@@ -874,7 +855,6 @@ async function send_telegram_msg(emoji_title,info_type,field_type,msg_text,label
   }
 
 }
-
 function getFilesizeInBytes(filename) {
   try {
     const stats = fs.statSync(filename);
@@ -884,8 +864,6 @@ function getFilesizeInBytes(filename) {
     return 0;
   }
 }
-
-
 function error(args) {
   try {
     //console.error(args);
@@ -905,52 +883,41 @@ function error(args) {
     console.error(err);
   }
 }
-
-
 async function auto_update() {
+  delete require.cache[require.resolve('./config.js')];
+  var config = require('./config.js');
+  var remote_version = shell.exec("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/fluxnode-watchdog/master/package.json | jq -r '.version'",{ silent: true }).stdout;
+  var local_version = shell.exec("jq -r '.version' package.json",{ silent: true }).stdout;
+  console.log(' UPDATE CHECKING....');
+  console.log('=================================================================');
+  console.log(`Watchdog current: ${remote_version.trim()} installed: ${local_version.trim()}`);
+  if ( remote_version.trim() != "" && local_version.trim() != "" ){
+    if ( remote_version.trim() !== local_version.trim()){
+      console.log('New watchdog version detected:');
+      console.log('=================================================================');
+      console.log('Local version: '+local_version.trim());
+      console.log('Remote version: '+remote_version.trim());
+      console.log('=================================================================');
+      shell.exec("cd /home/$USER/watchdog && git pull",{ silent: true }).stdout;
+      var local_ver = shell.exec("jq -r '.version' package.json",{ silent: true }).stdout;
+      if ( local_ver.trim() == remote_version.trim() ){
+        await discord_hook(`Fluxnode Watchdog updated!\nVersion: **${remote_version}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
 
- delete require.cache[require.resolve('./config.js')];
- var config = require('./config.js');
- var remote_version = shell.exec("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/fluxnode-watchdog/master/package.json | jq -r '.version'",{ silent: true }).stdout;
- var local_version = shell.exec("jq -r '.version' package.json",{ silent: true }).stdout;
+        // Update notification Watchdog telegram
+       var emoji_title = '\u{23F0}';
+        var emoji_update='\u{1F504}';
+        var info_type = 'New Update '+emoji_update;
+        var field_type = 'Info: ';
+        var msg_text = "Fluxnode Watchdog updated! \n<b>Version: </b>"+remote_version;
+        await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
-console.log(' UPDATE CHECKING....');
-console.log('=================================================================');
-
-console.log(`Watchdog current: ${remote_version.trim()} installed: ${local_version.trim()}`);
-
-if ( remote_version.trim() != "" && local_version.trim() != "" ){
- if ( remote_version.trim() !== local_version.trim()){
-   console.log('New watchdog version detected:');
-   console.log('=================================================================');
-   console.log('Local version: '+local_version.trim());
-   console.log('Remote version: '+remote_version.trim());
-   console.log('=================================================================');
-   shell.exec("cd /home/$USER/watchdog && git pull",{ silent: true }).stdout;
-
-   var local_ver = shell.exec("jq -r '.version' package.json",{ silent: true }).stdout;
-   if ( local_ver.trim() == remote_version.trim() ){
-
-      await discord_hook(`Fluxnode Watchdog updated!\nVersion: **${remote_version}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
-
-      // Update notification Watchdog telegram
-      var emoji_title = '\u{23F0}';
-      var emoji_update='\u{1F504}';
-      var info_type = 'New Update '+emoji_update;
-      var field_type = 'Info: ';
-      var msg_text = "Fluxnode Watchdog updated! \n<b>Version: </b>"+remote_version;
-      await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
-
-      console.log('Update successfully.');
-      sleep.sleep(2);
-   }
-
-   console.log(' ');
-
+        console.log('Update successfully.');
+        sleep.sleep(2);
+      }
+     console.log(' ');
+    }
   }
-}
-
-if (config.zelflux_update == "1") {
+  if (config.zelflux_update == "1") {
 
    var zelflux_remote_version = shell.exec("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json | jq -r '.version'",{ silent: true }).stdout;
    var zelflux_local_version = shell.exec("jq -r '.version' /home/$USER/zelflux/package.json",{ silent: true }).stdout;
@@ -986,27 +953,18 @@ if (config.zelflux_update == "1") {
     }
    }
   }
-
-if (config.zelcash_update == "1") {
-
-   var zelcash_remote_version = shell.exec("curl -s -m 5 https://apt.runonflux.io/pool/main/f/flux/ | grep -o '[0-9].[0-9].[0-9]' | head -n1",{ silent: true }).stdout;
-   var zelcash_local_version = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
-
-
-console.log(`Flux daemon current: ${zelcash_remote_version.trim()} installed: ${zelcash_local_version.trim()}`);
-
-
- if ( zelcash_remote_version.trim() != "" && zelcash_local_version.trim() != "" ){
-
-   if ( zelcash_remote_version.trim() !== zelcash_local_version.trim() ){
-     component_update = 1;
-     console.log('New Flux daemon version detected:');
-     console.log('=================================================================');
-     console.log('Local version: '+zelcash_local_version.trim());
-     console.log('Remote version: '+zelcash_remote_version.trim());
-
-     var  update_info = shell.exec("ps aux | grep 'apt' | wc -l",{ silent: true }).stdout;
-
+  if (config.zelcash_update == "1") {
+    var zelcash_remote_version = shell.exec("curl -s -m 5 https://apt.runonflux.io/pool/main/f/flux/ | grep -o '[0-9].[0-9].[0-9]' | head -n1",{ silent: true }).stdout;
+    var zelcash_local_version = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
+    console.log(`Flux daemon current: ${zelcash_remote_version.trim()} installed: ${zelcash_local_version.trim()}`);
+    if ( zelcash_remote_version.trim() != "" && zelcash_local_version.trim() != "" ){
+      if ( zelcash_remote_version.trim() !== zelcash_local_version.trim() ){
+      component_update = 1;
+      console.log('New Flux daemon version detected:');
+      console.log('=================================================================');
+      console.log('Local version: '+zelcash_local_version.trim());
+      console.log('Remote version: '+zelcash_remote_version.trim());
+      var  update_info = shell.exec("ps aux | grep 'apt' | wc -l",{ silent: true }).stdout;
       if ( update_info > 2 ) {
 
         shell.exec("sudo killall apt",{ silent: true }).stdout;
@@ -1014,39 +972,32 @@ console.log(`Flux daemon current: ${zelcash_remote_version.trim()} installed: ${
         shell.exec("sudo dpkg --configure -a",{ silent: true }).stdout;
 
       }
-
-     var zelcash_dpkg_version_before = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
-     shell.exec("sudo systemctl stop zelcash",{ silent: true })
-     shell.exec("sudo fuser -k 16125/tcp",{ silent: true })
-     shell.exec("sudo apt-get update",{ silent: true })
-     shell.exec("sudo apt-get install flux -y",{ silent: true })
-     var zelcash_dpkg_version_after = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
-     sleep.sleep(2);
-     shell.exec("sudo systemctl start zelcash",{ silent: true })
-
-       if ( (zelcash_dpkg_version_before !== zelcash_dpkg_version_after) && zelcash_dpkg_version_after != "" ){
-
-         await discord_hook(`Fluxnode daemon updated!\nVersion: **${zelcash_dpkg_version_after}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
-
-         // Update notification daemon
-         var emoji_title = '\u{23F0}';
-         var emoji_update='\u{1F504}';
-         var info_type = 'New Update '+emoji_update;
-         var field_type = 'Info: ';
-         var msg_text = "Fluxnode Daemon updated! \n<b>Version: </b>"+zelcash_dpkg_version_after;
-         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
-
-          console.log('Update successfully.');
-          console.log(' ');
-          sleep.sleep(2);
-
-       } else {
-         console.log('Script called.');
-         console.log(' ');
-          sleep.sleep(2);
-       }
-
-   }
+      var zelcash_dpkg_version_before = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
+      shell.exec("sudo systemctl stop zelcash",{ silent: true })
+      shell.exec("sudo fuser -k 16125/tcp",{ silent: true })
+      shell.exec("sudo apt-get update",{ silent: true })
+      shell.exec("sudo apt-get install flux -y",{ silent: true })
+      var zelcash_dpkg_version_after = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
+      sleep.sleep(2);
+      shell.exec("sudo systemctl start zelcash",{ silent: true })
+      if ( (zelcash_dpkg_version_before !== zelcash_dpkg_version_after) && zelcash_dpkg_version_after != "" ){
+        await discord_hook(`Fluxnode daemon updated!\nVersion: **${zelcash_dpkg_version_after}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
+        // Update notification daemon
+        var emoji_title = '\u{23F0}';
+        var emoji_update='\u{1F504}';
+        var info_type = 'New Update '+emoji_update;
+        var field_type = 'Info: ';
+        var msg_text = "Fluxnode Daemon updated! \n<b>Version: </b>"+zelcash_dpkg_version_after;
+        await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+        console.log('Update successfully.');
+        console.log(' ');
+        sleep.sleep(2); 
+      } else {
+        console.log('Script called.');
+        console.log(' ');
+        sleep.sleep(2);
+      }
+    }
   }
  }
 
@@ -1115,8 +1066,6 @@ if (config.zelbench_update == "1") {
 console.log('=================================================================');
 
 }
-
-
 async function flux_check() {
 
   delete require.cache[require.resolve('./config.js')];
@@ -1151,12 +1100,12 @@ if ( service_inactive.trim() == "inactive" ) {
 
   console.log('============================================================['+inactive_counter+']');
   if ( inactive_counter > 6 ) {
-     shell.exec("sudo fuser -k 16125/tcp",{ silent: true })
-     shell.exec("sudo systemctl start zelcash",{ silent: true })
-     inactive_counter=0;
+    shell.exec("sudo fuser -k 16125/tcp",{ silent: true })
+    shell.exec("sudo systemctl start zelcash",{ silent: true })
+    inactive_counter=0;
    } else {
-    return;
-   }
+   return;
+  }
 }
 
 if ( component_update == 1 ) {
@@ -1360,6 +1309,10 @@ if (zelback_status == "" || typeof zelback_status == "undefined"){
     console.log('FluxOS status = '+zelback_status);
     if ( lock_zelback != "1" && disc_count == 2) {
     error('FluxOS disconnected!');
+    var flux_api_port = await shell.exec("grep -w apiport /home/$USER/zelflux/config/userconfig.js | grep -o '[[:digit:]]*'",{ silent: true });
+    var port_api = Number(flux_api_port.trim());
+    var error_output=shell.exec(`curl -sSL -m 10 http://localhost:${port_api}/id/loginphrase`,{ silent: true }).stdout;
+    error(`Error: ${error_output}`);
     await discord_hook("FluxOS disconnected!",web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
 
     // FluxOS disconnected notification telegram
@@ -1675,22 +1628,15 @@ console.log('CPU eps under minimum limit for '+tire_name+'('+eps_limit+'), curre
 } else {
 tire_lock=0;
 }
-
-
  if ( zelcash_height != "" && typeof zelcash_height != "undefined" ){
-   
    var skip_sync=between(1, 4);
    if ( skip_sync > 2 ) {
      await Check_Sync(zelcash_height,data_time_utc);
    } else {   
     console.log('Sync check skipped: '+skip_sync+' <= 2');   
-   }
-      
+   }  
  }
-
-
 console.log('============================================================['+zelbench_counter+'/'+zelcashd_counter+']');
-
 }
 
 setInterval(job_creator, 1*60*1000);
