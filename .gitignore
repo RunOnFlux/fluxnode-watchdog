@@ -5,3 +5,4 @@ package-lock.json
 README.md
 watchdog_error.log
 config.js
+.vscode
