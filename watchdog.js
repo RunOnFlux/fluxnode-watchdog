@@ -605,7 +605,7 @@ if (fs.existsSync(path)) {
 
   if (fs.existsSync(zelcash_path)) {
     var tx_hash = shell.exec("grep -w zelnodeoutpoint "+zelcash_path+" | sed -e 's/zelnodeoutpoint=//'",{ silent: true }).stdout;
-    var exec_comment = `${daemon_cli} decoderawtransaction $(${daemon_cli} getrawtransaction ${tx_hash} ) | jq '.vout[].value' | egrep '1000|12500|'`
+    var exec_comment = `${daemon_cli} decoderawtransaction $(${daemon_cli} getrawtransaction ${tx_hash} ) | jq '.vout[].value' | egrep '1000|12500|40000'`
     var type = shell.exec(`${exec_comment}`,{ silent: true }).stdout;
     switch(Number(type.trim())){
       case 1000:
@@ -718,21 +718,21 @@ else {
 
   if (fs.existsSync(zelcash_path)) {
    var tx_hash = shell.exec("grep -w zelnodeoutpoint "+zelcash_path+" | sed -e 's/zelnodeoutpoint=//'",{ silent: true }).stdout;
-   var exec_comment = `${daemon_cli} decoderawtransaction $(${daemon_cli} getrawtransaction ${tx_hash} ) | jq '.vout[].value' | egrep '10000|25000|100000'`
+   var exec_comment = `${daemon_cli} decoderawtransaction $(${daemon_cli} getrawtransaction ${tx_hash} ) | jq '.vout[].value' | egrep '1000|12500|40000'`
    var type = shell.exec(`${exec_comment}`,{ silent: true }).stdout;
 
    switch(Number(type.trim())){
-       case 10000:
+       case 1000:
        var  tire_name="CUMULUS";
        var eps_limit = 90;
        break;
 
-       case 25000:
+       case 12500:
        var  tire_name="NIMBUS";
        var eps_limit = 180
        break;
 
-       case 100000:
+       case 40000:
        var  tire_name="STRATUS";
        var eps_limit = 300
        break;
