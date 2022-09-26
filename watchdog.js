@@ -964,8 +964,8 @@ async function auto_update() {
       console.log('=================================================================');
       console.log('Local version: '+zelcash_local_version.trim());
       console.log('Remote version: '+zelcash_remote_version.trim());
-      var  update_info = shell.exec("ps aux | grep 'apt' | wc -l",{ silent: true }).stdout;
-      if ( update_info > 2 ) {
+      var  update_info = shell.exec("ps -C apt,apt-get,dpkg >/dev/null && echo 'installing software' || echo 'all clear'",{ silent: true }).stdout;
+      if ( update_info == "installing software" ) {
 
         shell.exec("sudo killall apt",{ silent: true }).stdout;
         shell.exec("sudo killall apt-get",{ silent: true }).stdout;
@@ -1019,7 +1019,8 @@ if (config.zelbench_update == "1") {
      console.log('Remote version: '+zelbench_remote_version.trim());
      console.log('=================================================================');
 
-      if ( update_info > 2 ) {
+     var  update_info = shell.exec("ps -C apt,apt-get,dpkg >/dev/null && echo 'installing software' || echo 'all clear'",{ silent: true }).stdout;
+     if ( update_info == "installing software" ) {
 
       shell.exec("sudo killall apt",{ silent: true }).stdout;
       shell.exec("sudo killall apt-get",{ silent: true }).stdout;
@@ -1083,9 +1084,8 @@ async function flux_check() {
   console.log('UTC: '+data_time_utc+' | LOCAL: '+local );
   console.log('=================================================================');
 
-var  update_info = shell.exec("ps aux | grep 'apt' | wc -l",{ silent: true }).stdout;
-
-if ( update_info > 2 ) {
+var  update_info = shell.exec("ps -C apt,apt-get,dpkg >/dev/null && echo 'installing software' || echo 'all clear'",{ silent: true }).stdout;
+if ( update_info == "installing software" ) {
   console.log('Update detected...');
   console.log('Watchdog in sleep mode => '+data_time_utc);
   console.log('=================================================================');
@@ -1097,7 +1097,6 @@ if ( service_inactive.trim() == "inactive" ) {
   console.log('Flux daemon service status: inactive');
   console.log('Watchdog in sleep mode => '+data_time_utc);
   ++inactive_counter;
-
   console.log('============================================================['+inactive_counter+']');
   if ( inactive_counter > 6 ) {
     shell.exec("sudo fuser -k 16125/tcp",{ silent: true })
