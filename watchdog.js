@@ -56,6 +56,9 @@ async function job_creator(){
   if ( job_count%17 == 0 ) {
     await kda_check();
   }
+  if ( job_count%50 == 0 ){
+    await disk_check();
+  }
   // reset job count
   if ( job_count%60 == 0 ) {
     job_count = 0;
@@ -1635,7 +1638,10 @@ tire_lock=0;
     console.log('Sync check skipped: '+skip_sync+' <= 2');   
    }  
  }
+  console.log('============================================================['+zelbench_counter+'/'+zelcashd_counter+']');
+}
 
+async function disk_check() {
   var disku_max = shell.exec(`df -Hl / | grep -v File | tr -s ' '|cut -f2 -d" "`,{ silent: true }).stdout.trim();
   var disku_per = shell.exec(`df -Hl / | grep -v File | tr -s ' '|cut -f5 -d" "`,{ silent: true }).stdout.trim();
   var diskPercent = Math.floor(disku_per.replace('%', ''));
@@ -1644,8 +1650,10 @@ tire_lock=0;
   var memAvailable = shell.exec(`cat /proc/meminfo | grep MemAvailable | awk -F ':' '{print $2}' | awk -F ' kB' '{print $1}' `,{ silent: true}).stdout.trim();
   var memPercent = Math.floor(((memTotal-memAvailable) / memTotal) * 100);
 
+  console.log('============================================================');
   console.log(`Disk Usage: ${disku_per} of ${disku_max} `);
   console.log(`MEM Usage: ${memPercent} of ${memTotal} `);
+  console.log('============================================================');
 
   if ( diskPercent > 90 ) {
     await discord_hook(`${disku_per} of ${disku_max}`,web_hook_url,ping,'Warn','#FFFF00','DISK USAGE','watchdog_fix1.png',label);
@@ -1654,7 +1662,6 @@ tire_lock=0;
   if ( memPercent > 90 ) {
     await discord_hook(`${memPercent}`,web_hook_url,ping,'Warn','#FFFF00','MEM USAGE','watchdog_fix1.png',label);
   }
-  console.log('============================================================['+zelbench_counter+'/'+zelcashd_counter+']');
 }
 
 setInterval(job_creator, 1*60*1000);
