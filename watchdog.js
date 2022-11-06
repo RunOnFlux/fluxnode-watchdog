@@ -1635,7 +1635,26 @@ tire_lock=0;
     console.log('Sync check skipped: '+skip_sync+' <= 2');   
    }  
  }
-console.log('============================================================['+zelbench_counter+'/'+zelcashd_counter+']');
+
+  var disku_max = shell.exec(`df -Hl / | grep -v File | tr -s ' '|cut -f2 -d" "`,{ silent: true }).stdout.trim();
+	var disku_per = shell.exec(`df -Hl / | grep -v File | tr -s ' '|cut -f5 -d" "`,{ silent: true }).stdout.trim();
+	var diskPercent = Math.floor(disku_per.replace('%', ''));
+
+	var memTotal = shell.exec(`cat /proc/meminfo | grep MemTotal | awk -F ':' '{print $2}' | awk -F ' kB' '{print $1}' `,{ silent: true}).stdout.trim();
+	var memAvailable = shell.exec(`cat /proc/meminfo | grep MemAvailable | awk -F ':' '{print $2}' | awk -F ' kB' '{print $1}' `,{ silent: true}).stdout.trim();
+	var memPercent = Math.floor(((memTotal-memAvailable) / memTotal) * 100);
+
+  console.log(`Disk Usage: ${disku_per} of ${disku_max} `);
+  console.log(`MEM Usage: ${memPercent} of ${memTotal} `);
+
+  if ( diskPercent > 90 ) {
+    await discord_hook(`${disku_per} of ${disku_max}`,web_hook_url,ping,'Warn','#FFFF00','DISK USAGE','watchdog_fix1.png',label);
+  } 
+
+  if ( memPercent > 90 ) {
+    await discord_hook(`${memPercent}`,web_hook_url,ping,'Warn','#FFFF00','MEM USAGE','watchdog_fix1.png',label);
+  }
+  console.log('============================================================['+zelbench_counter+'/'+zelcashd_counter+']');
 }
 
 setInterval(job_creator, 1*60*1000);
