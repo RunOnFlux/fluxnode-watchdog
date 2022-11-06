@@ -1637,12 +1637,12 @@ tire_lock=0;
  }
 
   var disku_max = shell.exec(`df -Hl / | grep -v File | tr -s ' '|cut -f2 -d" "`,{ silent: true }).stdout.trim();
-	var disku_per = shell.exec(`df -Hl / | grep -v File | tr -s ' '|cut -f5 -d" "`,{ silent: true }).stdout.trim();
-	var diskPercent = Math.floor(disku_per.replace('%', ''));
+  var disku_per = shell.exec(`df -Hl / | grep -v File | tr -s ' '|cut -f5 -d" "`,{ silent: true }).stdout.trim();
+  var diskPercent = Math.floor(disku_per.replace('%', ''));
 
-	var memTotal = shell.exec(`cat /proc/meminfo | grep MemTotal | awk -F ':' '{print $2}' | awk -F ' kB' '{print $1}' `,{ silent: true}).stdout.trim();
-	var memAvailable = shell.exec(`cat /proc/meminfo | grep MemAvailable | awk -F ':' '{print $2}' | awk -F ' kB' '{print $1}' `,{ silent: true}).stdout.trim();
-	var memPercent = Math.floor(((memTotal-memAvailable) / memTotal) * 100);
+  var memTotal = shell.exec(`cat /proc/meminfo | grep MemTotal | awk -F ':' '{print $2}' | awk -F ' kB' '{print $1}' `,{ silent: true}).stdout.trim();
+  var memAvailable = shell.exec(`cat /proc/meminfo | grep MemAvailable | awk -F ':' '{print $2}' | awk -F ' kB' '{print $1}' `,{ silent: true}).stdout.trim();
+  var memPercent = Math.floor(((memTotal-memAvailable) / memTotal) * 100);
 
   console.log(`Disk Usage: ${disku_per} of ${disku_max} `);
   console.log(`MEM Usage: ${memPercent} of ${memTotal} `);
