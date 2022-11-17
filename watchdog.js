@@ -1639,16 +1639,15 @@ tire_lock=0;
 console.log('============================================================['+zelbench_counter+'/'+zelcashd_counter+']');
 }
 
-async function watchdog_init() {
+function watchdog_init() {
   delete require.cache[require.resolve('./config.js')];
   var config = require('./config.js');
-
   var watchdog_setupIN = config.watchdog_setup;
 
-  if ( watchdog_setupIN = 1 ) {
-    await discord_hook(`Watchdog Confirmation`, web_hook_url, ping, 'Alert', '#1F8B4C', 'Info', 'watchdog_error1.png', label);
+  if ( watchdog_setupIN == 1 ) {
+    console.log('WATCHDOG CONFIRMATION DISCORD PING SENT');
+    discord_hook(`Watchdog Confirmation`, web_hook_url, ping, 'Alert', '#1F8B4C', 'Info', 'watchdog_error1.png', label);
 
-    if ( watchDog == 1 ) {
       fs.readFile('./config.js', 'utf8', function (err,data) {
         if (err) {
           return console.log(err);
@@ -1659,10 +1658,9 @@ async function watchdog_init() {
            if (err) return console.log(err);
         });
       });
-    }
   }
 }
 
 setInterval(job_creator, 1 * 60 * 1000);
 
-await watchdog_init();
+watchdog_init();
