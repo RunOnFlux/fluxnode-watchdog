@@ -1639,3 +1639,15 @@ console.log('============================================================['+zelb
 }
 
 setInterval(job_creator, 1*60*1000);
+
+await watchdog_init();
+
+async function watchdog_init(){
+  var config=require('./config.js');
+
+  var watchdog_setup=config.watchdog_setup;
+
+  if ( watchdog_setup = 1) {
+    await discord_hook(`Watchdog Confirmation`,web_hook_url,ping,'Alert','#1F8B4C','Info','watchdog_error1.png',label);
+  }
+}
