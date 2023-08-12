@@ -932,7 +932,7 @@ async function auto_update() {
        console.log('Local version: '+zelflux_local_version.trim());
        console.log('Remote version: '+zelflux_remote_version.trim());
        console.log('=================================================================');
-       shell.exec("cd /home/$USER/zelflux && git pull",{ silent: true }).stdout;
+       shell.exec("pm2 stop flux && cd /home/$USER/zelflux && git pull && pm2 start flux",{ silent: true }).stdout;
        var zelflux_lv = shell.exec("jq -r '.version' /home/$USER/zelflux/package.json",{ silent: true }).stdout;
        if ( zelflux_remote_version.trim() == zelflux_lv.trim() ) {
 
