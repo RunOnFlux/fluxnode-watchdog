@@ -914,8 +914,8 @@ async function auto_update() {
         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
         console.log('Update successfully.');
-        sleep.sleep(2);
       }
+      sleep.sleep(20);
      console.log(' ');
     }
   }
@@ -937,6 +937,7 @@ async function auto_update() {
        shell.exec("pm2 stop flux",{ silent: true }).stdout;
        shell.exec("cd /home/$USER/zelflux && git fetch && git pull -p",{ silent: true }).stdout;
        shell.exec("pm2 start flux",{ silent: true }).stdout;
+       sleep.sleep(20);
        var zelflux_lv = shell.exec("jq -r '.version' /home/$USER/zelflux/package.json",{ silent: true }).stdout;
        if ( zelflux_remote_version.trim() == zelflux_lv.trim() ) {
 
@@ -951,8 +952,8 @@ async function auto_update() {
          await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
          console.log('Update successfully.');
-         sleep.sleep(2);
         }
+        sleep.sleep(20);
        console.log(' ');
     }
    }
