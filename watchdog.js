@@ -8,7 +8,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 
 sleep.sleep(15);
-console.log('Watchdog v6.1.0 Starting...');
+console.log('Watchdog v6.2.0 Starting...');
 console.log('=================================================================');
 
 const path = 'config.js';
@@ -898,7 +898,9 @@ async function auto_update() {
       console.log('Local version: '+local_version.trim());
       console.log('Remote version: '+remote_version.trim());
       console.log('=================================================================');
-      shell.exec("cd /home/$USER/watchdog && git pull",{ silent: true }).stdout;
+      shell.exec("pm2 stop watchdog",{ silent: true }).stdout;
+      shell.exec("cd /home/$USER/watchdog && git fetch && git pull -p",{ silent: true }).stdout;
+      shell.exec("pm2 start watchdog --watch",{ silent: true }).stdout;
       var local_ver = shell.exec("jq -r '.version' package.json",{ silent: true }).stdout;
       if ( local_ver.trim() == remote_version.trim() ){
         await discord_hook(`Fluxnode Watchdog updated!\nVersion: **${remote_version}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
@@ -912,8 +914,8 @@ async function auto_update() {
         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
         console.log('Update successfully.');
-        sleep.sleep(2);
       }
+      sleep.sleep(20);
      console.log(' ');
     }
   }
@@ -932,7 +934,10 @@ async function auto_update() {
        console.log('Local version: '+zelflux_local_version.trim());
        console.log('Remote version: '+zelflux_remote_version.trim());
        console.log('=================================================================');
-       shell.exec("cd /home/$USER/zelflux && git pull",{ silent: true }).stdout;
+       shell.exec("pm2 stop flux",{ silent: true }).stdout;
+       shell.exec("cd /home/$USER/zelflux && git fetch && git pull -p",{ silent: true }).stdout;
+       shell.exec("pm2 start flux",{ silent: true }).stdout;
+       sleep.sleep(20);
        var zelflux_lv = shell.exec("jq -r '.version' /home/$USER/zelflux/package.json",{ silent: true }).stdout;
        if ( zelflux_remote_version.trim() == zelflux_lv.trim() ) {
 
@@ -947,8 +952,8 @@ async function auto_update() {
          await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
          console.log('Update successfully.');
-         sleep.sleep(2);
         }
+        sleep.sleep(20);
        console.log(' ');
     }
    }
