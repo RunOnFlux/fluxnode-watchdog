@@ -898,9 +898,7 @@ async function auto_update() {
       console.log('Local version: '+local_version.trim());
       console.log('Remote version: '+remote_version.trim());
       console.log('=================================================================');
-      shell.exec("pm2 stop watchdog",{ silent: true }).stdout;
       shell.exec("cd /home/$USER/watchdog && git fetch && git pull -p",{ silent: true }).stdout;
-      shell.exec("pm2 start watchdog --watch",{ silent: true }).stdout;
       var local_ver = shell.exec("jq -r '.version' package.json",{ silent: true }).stdout;
       if ( local_ver.trim() == remote_version.trim() ){
         await discord_hook(`Fluxnode Watchdog updated!\nVersion: **${remote_version}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
@@ -912,7 +910,6 @@ async function auto_update() {
         var field_type = 'Info: ';
         var msg_text = "Fluxnode Watchdog updated! \n<b>Version: </b>"+remote_version;
         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
-
         console.log('Update successfully.');
       }
       sleep.sleep(20);
@@ -950,7 +947,6 @@ async function auto_update() {
          var field_type = 'Info: ';
          var msg_text = "FluxOS updated!\n<b>Version: </b>"+zelflux_remote_version;
          await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
-
          console.log('Update successfully.');
         }
         sleep.sleep(20);
