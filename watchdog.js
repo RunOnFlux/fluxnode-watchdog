@@ -62,6 +62,15 @@ async function job_creator(){
   }
 
 }
+
+/* Check if string is IP */
+async function checkIfValidIP(str) {
+  // Regular expression to check if string is a IP address
+  const regexExp = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/gi;
+
+  return regexExp.test(str);
+}
+
 async function getKadenaNodeHeight(ip) {
   try {
       const agent = new https.Agent({
@@ -388,7 +397,7 @@ async function Myip(){
   for (const [index, val] of check_list.entries()) {
     MyIP = await shell.exec(`curl -sk -m 10 https://${val} | tr -dc '[:alnum:].'`,{ silent: true }).stdout;
 
-    if ( MyIP.length > 5){
+    if (checkIfValidIP(MyIP)){
       break;
     }
 
