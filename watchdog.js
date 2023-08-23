@@ -8,7 +8,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 
 sleep.sleep(15);
-console.log('Watchdog v6.2.2 Starting...');
+console.log('Watchdog v6.2.3 Starting...');
 console.log('=================================================================');
 
 const path = 'config.js';
@@ -64,10 +64,9 @@ async function job_creator(){
 }
 
 /* Check if string is IP */
-async function checkIfValidIP(str) {
+function checkIfValidIP(str) {
   // Regular expression to check if string is a IP address
   const regexExp = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/gi;
-
   return regexExp.test(str);
 }
 
