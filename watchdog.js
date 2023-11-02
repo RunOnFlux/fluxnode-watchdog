@@ -43,24 +43,25 @@ function between(min, max) {
     Math.random() * (max - min) + min
   )
 }
+
+const autoUpdate = between(60, 240); // auto update will now be different on each node and checks are defined on watchdog startup between 1 and 4h.
 async function job_creator(){
 
   ++job_count;
 
-  if ( job_count%60 == 0 ) {
+  if ( job_count % autoUpdate === 0 ) {
    await  auto_update();
   }
-  if ( job_count%4   == 0 ) {
+  if ( job_count % 4   === 0 ) {
     await flux_check();
   }
-  if ( job_count%17 == 0 ) {
+  if ( job_count % 17 === 0 ) {
     await kda_check();
   }
   // reset job count
-  if ( job_count%60 == 0 ) {
+  if ( job_count % autoUpdate === 0 ) {
     job_count = 0;
   }
-
 }
 
 /* Check if string is IP */
