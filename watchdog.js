@@ -942,7 +942,7 @@ async function auto_update() {
        console.log('=================================================================');
        shell.exec("pm2 stop flux",{ silent: true }).stdout;
        sleep.sleep(5);
-       shell.exec("cd /home/$USER/zelflux && git fetch && git pull -p",{ silent: true }).stdout;
+       shell.exec("cd /home/$USER/zelflux && git checkout . && git fetch && git pull -p",{ silent: true }).stdout;
        sleep.sleep(5);
        shell.exec("pm2 start flux",{ silent: true }).stdout;
        sleep.sleep(20);
