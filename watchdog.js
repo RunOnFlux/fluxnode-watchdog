@@ -8,7 +8,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 
 sleep.sleep(15);
-console.log('Watchdog v6.2.3 Starting...');
+console.log('Watchdog v6.3.0 Starting...');
 console.log('=================================================================');
 
 const path = 'config.js';
@@ -922,8 +922,6 @@ async function auto_update() {
         console.log('Update successfully.');
       }
       sleep.sleep(20);
-      // Lets restart watchdog after a update
-      shell.exec("pm2 restart watchdog --watch",{ silent: true }).stdout;
       console.log(' ');
     }
   }
