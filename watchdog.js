@@ -922,7 +922,9 @@ async function auto_update() {
         console.log('Update successfully.');
       }
       sleep.sleep(20);
-     console.log(' ');
+      // Lets restart watchdog after a update
+      shell.exec("pm2 restart watchdog --watch",{ silent: true }).stdout;
+      console.log(' ');
     }
   }
   if (config.zelflux_update == "1") {
