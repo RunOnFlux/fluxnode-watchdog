@@ -941,7 +941,9 @@ async function auto_update() {
        console.log('Remote version: '+zelflux_remote_version.trim());
        console.log('=================================================================');
        shell.exec("pm2 stop flux",{ silent: true }).stdout;
+       sleep.sleep(5);
        shell.exec("cd /home/$USER/zelflux && git fetch && git pull -p",{ silent: true }).stdout;
+       sleep.sleep(5);
        shell.exec("pm2 start flux",{ silent: true }).stdout;
        sleep.sleep(20);
        var zelflux_lv = shell.exec("jq -r '.version' /home/$USER/zelflux/package.json",{ silent: true }).stdout;
