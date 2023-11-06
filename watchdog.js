@@ -44,13 +44,13 @@ function between(min, max) {
   )
 }
 
-let autoUpdate = between(60, 240); // auto update will now be different on each node and checks are defined on watchdog startup between 1 and 4h.
+let autoUpdate = between(60, 240); // auto update will now be different on each node and checks are defined between 1 and 4h.
 async function job_creator(){
 
   ++job_count;
 
   if ( job_count % autoUpdate === 0 ) {
-   await  auto_update();
+    await auto_update();
   }
   if ( job_count % 4   === 0 ) {
     await flux_check();
