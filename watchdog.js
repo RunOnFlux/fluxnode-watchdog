@@ -8,7 +8,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 
 sleep.sleep(15);
-console.log('Watchdog v6.2.3 Starting...');
+console.log('Watchdog v6.3.0 Starting...');
 console.log('=================================================================');
 
 const path = 'config.js';
@@ -43,24 +43,26 @@ function between(min, max) {
     Math.random() * (max - min) + min
   )
 }
+
+let autoUpdate = between(60, 240); // auto update will now be different on each node and checks are defined between 1 and 4h.
 async function job_creator(){
 
   ++job_count;
 
-  if ( job_count%60 == 0 ) {
-   await  auto_update();
+  if ( job_count % autoUpdate === 0 ) {
+    await auto_update();
   }
-  if ( job_count%4   == 0 ) {
+  if ( job_count % 4   === 0 ) {
     await flux_check();
   }
-  if ( job_count%17 == 0 ) {
+  if ( job_count % 17 === 0 ) {
     await kda_check();
   }
   // reset job count
-  if ( job_count%60 == 0 ) {
+  if ( job_count % autoUpdate === 0 ) {
     job_count = 0;
+    autoUpdate = between(60, 240);
   }
-
 }
 
 /* Check if string is IP */
@@ -906,7 +908,7 @@ async function auto_update() {
       console.log('Local version: '+local_version.trim());
       console.log('Remote version: '+remote_version.trim());
       console.log('=================================================================');
-      shell.exec("cd /home/$USER/watchdog && git fetch && git pull -p",{ silent: true }).stdout;
+      shell.exec("cd /home/$USER/watchdog && git checkout . && git fetch && git pull -p",{ silent: true }).stdout;
       var local_ver = shell.exec("jq -r '.version' package.json",{ silent: true }).stdout;
       if ( local_ver.trim() == remote_version.trim() ){
         await discord_hook(`Fluxnode Watchdog updated!\nVersion: **${remote_version}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
@@ -922,7 +924,7 @@ async function auto_update() {
         console.log('Update successfully.');
       }
       sleep.sleep(20);
-     console.log(' ');
+      console.log(' ');
     }
   }
   if (config.zelflux_update == "1") {
@@ -941,7 +943,9 @@ async function auto_update() {
        console.log('Remote version: '+zelflux_remote_version.trim());
        console.log('=================================================================');
        shell.exec("pm2 stop flux",{ silent: true }).stdout;
-       shell.exec("cd /home/$USER/zelflux && git fetch && git pull -p",{ silent: true }).stdout;
+       sleep.sleep(5);
+       shell.exec("cd /home/$USER/zelflux && git checkout . && git fetch && git pull -p",{ silent: true }).stdout;
+       sleep.sleep(5);
        shell.exec("pm2 start flux",{ silent: true }).stdout;
        sleep.sleep(20);
        var zelflux_lv = shell.exec("jq -r '.version' /home/$USER/zelflux/package.json",{ silent: true }).stdout;
