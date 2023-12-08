@@ -3,16 +3,19 @@
   "version": "6.3.0",
   "description": "Watchdog for fluxnode",
   "main": "watchdog.js",
+  "scripts": {
+    "format:check": "prettier --check .",
+    "format:write": "prettier --write ."
+  },
   "dependencies": {
     "@prince25/discord-webhook-sender": "^1.2.3",
     "axios": "^0.21.1",
-    "https": "^1.0.0",
     "fs": "0.0.1-security",
+    "https": "^1.0.0",
     "moment": "^2.24.0",
+    "node-telegram-bot-api": "^0.53.0",
     "path": "^0.12.7",
     "shelljs": "^0.8.3",
-    "sleep": "^6.1.0",
-    "node-telegram-bot-api": "^0.53.0",
     "webhook-discord": "^3.7.7"
   },
   "repository": {
@@ -21,5 +24,8 @@
   },
   "keywords": [],
   "author": "Kamil Piekarski",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "prettier": "^3.1.0"
+  }
 }
