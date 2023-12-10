@@ -48,7 +48,7 @@ async function job_creator() {
   if (job_count % autoUpdate === 0) {
     await auto_update();
   }
-  if (job_count % 4 === 0) {
+  if (job_count % 5 === 0) {
     await flux_check();
   }
   if (job_count % 17 === 0) {
