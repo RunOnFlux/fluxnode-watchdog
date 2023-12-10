@@ -1013,7 +1013,9 @@ async function flux_check() {
       var zelcash_check = zelcash_getinfo_info.version;
       var zelbench_getstatus_info = JSON.parse(shell.exec(`${bench_cli} getstatus`, { silent: true }).stdout);
       var zelbench_benchmark_status = zelbench_getstatus_info.benchmarking;
-    } catch {}
+    } catch (error) {
+      console.log(error)
+    }
 
     if (watchdog_sleep != "1") {
       watchdog_sleep = "1";
@@ -1060,7 +1062,9 @@ async function flux_check() {
       zelback_status = zelbench_getstatus_info.flux;
     }
     var zelbench_benchmark_status = zelbench_getstatus_info.benchmarking;
-  } catch {}
+  } catch (error) {
+    console.log(error)
+  }
 
   try {
     var zelbench_getbenchmarks_info = JSON.parse(shell.exec(`${bench_cli} getbenchmarks`, { silent: true }).stdout);
@@ -1068,13 +1072,17 @@ async function flux_check() {
     var zelbench_eps = zelbench_getbenchmarks_info.eps;
     var zelbench_time = zelbench_getbenchmarks_info.time;
     var zelbench_error = zelbench_getbenchmarks_info.error;
-  } catch {}
+  } catch (error) {
+    console.log(error)
+  }
 
   try {
     var zelcash_getinfo_info = JSON.parse(shell.exec(`${daemon_cli} getinfo`, { silent: true }).stdout);
     var zelcash_check = zelcash_getinfo_info.version;
     var zelcash_height = zelcash_getinfo_info.blocks;
-  } catch {}
+  } catch (error) {
+    console.log(error)
+  }
 
   try {
     var zelcash_getzelnodestatus_info = JSON.parse(shell.exec(`${daemon_cli} getzelnodestatus`, { silent: true }).stdout);
@@ -1082,7 +1090,9 @@ async function flux_check() {
     var zelcash_last_paid_height = zelcash_getzelnodestatus_info.last_paid_height;
     var activesince = zelcash_getzelnodestatus_info.activesince;
     var lastpaid = zelcash_getzelnodestatus_info.lastpaid;
-  } catch {}
+  } catch (error) {
+    console.log(error)
+  }
 
   const mongod_check = shell.exec("pgrep mongod", { silent: true }).stdout;
 
