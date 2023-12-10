@@ -1148,6 +1148,7 @@ async function flux_check() {
 
   if (zelcash_node_status == "" || typeof zelcash_node_status == "undefined") {
     console.log("Fluxnode status = dead");
+    console.log(`Daemon CLI: ${daemon_cli}`)
   } else {
     if (zelcash_node_status == "expired") {
       console.log("Fluxnode status = " + zelcash_node_status);
@@ -1234,6 +1235,7 @@ async function flux_check() {
 
   if (zelbench_status == "" || typeof zelbench_status == "undefined") {
     console.log("Fluxbench status = dead");
+    console.log(`Bench CLI: ${bench_cli}`)
   } else {
     if (zelbench_status == "online") {
       console.log("Fluxbench status = " + zelbench_status);
@@ -1244,6 +1246,7 @@ async function flux_check() {
 
   if (zelbench_benchmark_status == "" || typeof zelbench_benchmark_status == "undefined") {
     console.log("Fluxbench status = dead");
+    console.log(`Bench CLI: ${bench_cli}`)
   } else {
     if (zelbench_benchmark_status == "toaster" || zelbench_benchmark_status == "failed") {
       console.log("Benchmark status = " + zelbench_benchmark_status);
@@ -1311,6 +1314,7 @@ async function flux_check() {
   } else {
     ++zelcashd_counter;
     console.log("Flux daemon status = dead");
+    console.log(`Bench CLI: ${daemon_cli}`)
 
     if (zelcashd_counter == "1") {
       error("Flux daemon crash detected!");
