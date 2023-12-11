@@ -1055,7 +1055,7 @@ async function flux_check() {
 
   // get fluxbench status
   try {
-    let fluxbenchStatus = shell.exec(`${bench_cli} getstatus`, { silent: true }).stdout;
+    let fluxbenchStatus = shell.exec(`${bench_cli} getstatus`, { silent: true, shell: '/usr/bin/bash' }).stdout;
     console.log(fluxbenchStatus);
     var zelbench_getstatus_info = JSON.parse(fluxbenchStatus);
     var zelbench_status = zelbench_getstatus_info.status;
@@ -1071,7 +1071,7 @@ async function flux_check() {
 
   // get flux node benchmarks
   try {
-    let fluxbenchInfo = shell.exec(`${bench_cli} getbenchmarks`, { silent: true }).stdout;
+    let fluxbenchInfo = shell.exec(`${bench_cli} getbenchmarks`, { silent: true, shell: '/usr/bin/bash' }).stdout;
     console.log(fluxbenchInfo);
     var zelbench_getbenchmarks_info = JSON.parse(fluxbenchInfo);
     //  var zelbench_ddwrite = zelbench_getbenchmarks_info.ddwrite;
@@ -1084,7 +1084,7 @@ async function flux_check() {
 
   // get flux daemon info
   try {
-    let fluxDaemonInfo = shell.exec(`${daemon_cli} getinfo`, { silent: true }).stdout;
+    let fluxDaemonInfo = shell.exec(`${daemon_cli} getinfo`, { silent: true, shell: '/usr/bin/bash' }).stdout;
     console.log(fluxDaemonInfo);
     var zelcash_getinfo_info = JSON.parse(fluxDaemonInfo);
     var zelcash_check = zelcash_getinfo_info.version;
@@ -1095,7 +1095,7 @@ async function flux_check() {
 
   // get flux node status from daemon
   try {
-    let fluxnodeStatus = shell.exec(shell.exec(`${daemon_cli} getzelnodestatus`, { silent: true }).stdout);
+    let fluxnodeStatus = shell.exec(`${daemon_cli} getzelnodestatus`, { silent: true, shell: '/usr/bin/bash' }).stdout;
     console.log(fluxnodeStatus);
     var zelcash_getzelnodestatus_info = JSON.parse(fluxnodeStatus);
     var zelcash_node_status = zelcash_getzelnodestatus_info.status;
