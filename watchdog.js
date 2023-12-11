@@ -679,14 +679,14 @@ if (fs.existsSync(path)) {
   console.log("========================");
 
   try {
-    fs.writeFileSync(path, dataToWrite, { flag: 'w' });
-    console.log('Config file created successfully.');
+    fs.writeFileSync(path, dataToWrite, { flag: "w" });
+    console.log("Config file created successfully.");
     console.log("========================");
   } catch (error) {
-    console.error('Error creating config file:', error);
+    console.error("Error creating config file:", error);
     console.log("========================");
   }
-  
+
   shell.exec("sleep 3");
   var config = require("./config.js");
   var web_hook_url = config.web_hook_url;
@@ -1014,7 +1014,7 @@ async function flux_check() {
       var zelbench_getstatus_info = JSON.parse(shell.exec(`${bench_cli} getstatus`, { silent: true }).stdout);
       var zelbench_benchmark_status = zelbench_getstatus_info.benchmarking;
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
 
     if (watchdog_sleep != "1") {
@@ -1053,8 +1053,11 @@ async function flux_check() {
     }
   }
 
+  // get fluxbench status
   try {
-    var zelbench_getstatus_info = JSON.parse(shell.exec(`${bench_cli} getstatus`, { silent: true }).stdout);
+    let fluxbenchStatus = shell.exec(`${bench_cli} getstatus`, { silent: true }).stdout;
+    console.log(fluxbenchStatus);
+    var zelbench_getstatus_info = JSON.parse(fluxbenchStatus);
     var zelbench_status = zelbench_getstatus_info.status;
     var zelback_status = zelbench_getstatus_info.zelback;
 
@@ -1063,35 +1066,44 @@ async function flux_check() {
     }
     var zelbench_benchmark_status = zelbench_getstatus_info.benchmarking;
   } catch (error) {
-    console.log(error)
+    console.log(error);
   }
 
+  // get flux node benchmarks
   try {
-    var zelbench_getbenchmarks_info = JSON.parse(shell.exec(`${bench_cli} getbenchmarks`, { silent: true }).stdout);
+    let fluxbenchInfo = shell.exec(`${bench_cli} getbenchmarks`, { silent: true }).stdout;
+    console.log(fluxbenchInfo);
+    var zelbench_getbenchmarks_info = JSON.parse(fluxbenchInfo);
     //  var zelbench_ddwrite = zelbench_getbenchmarks_info.ddwrite;
     var zelbench_eps = zelbench_getbenchmarks_info.eps;
     var zelbench_time = zelbench_getbenchmarks_info.time;
     var zelbench_error = zelbench_getbenchmarks_info.error;
   } catch (error) {
-    console.log(error)
+    console.log(error.message ?? error);
   }
 
+  // get flux daemon info
   try {
-    var zelcash_getinfo_info = JSON.parse(shell.exec(`${daemon_cli} getinfo`, { silent: true }).stdout);
+    let fluxDaemonInfo = shell.exec(`${daemon_cli} getinfo`, { silent: true }).stdout;
+    console.log(fluxDaemonInfo);
+    var zelcash_getinfo_info = JSON.parse(fluxDaemonInfo);
     var zelcash_check = zelcash_getinfo_info.version;
     var zelcash_height = zelcash_getinfo_info.blocks;
   } catch (error) {
-    console.log(error)
+    console.log(error.message ?? error);
   }
 
+  // get flux node status from daemon
   try {
-    var zelcash_getzelnodestatus_info = JSON.parse(shell.exec(`${daemon_cli} getzelnodestatus`, { silent: true }).stdout);
+    let fluxnodeStatus = shell.exec(shell.exec(`${daemon_cli} getzelnodestatus`, { silent: true }).stdout);
+    console.log(fluxnodeStatus);
+    var zelcash_getzelnodestatus_info = JSON.parse(fluxnodeStatus);
     var zelcash_node_status = zelcash_getzelnodestatus_info.status;
     var zelcash_last_paid_height = zelcash_getzelnodestatus_info.last_paid_height;
     var activesince = zelcash_getzelnodestatus_info.activesince;
     var lastpaid = zelcash_getzelnodestatus_info.lastpaid;
   } catch (error) {
-    console.log(error)
+    console.log(error.message ?? error);
   }
 
   const mongod_check = shell.exec("pgrep mongod", { silent: true }).stdout;
@@ -1148,7 +1160,7 @@ async function flux_check() {
 
   if (zelcash_node_status == "" || typeof zelcash_node_status == "undefined") {
     console.log("Fluxnode status = dead");
-    console.log(`Daemon CLI: ${daemon_cli}`)
+    console.log(`Daemon CLI: ${daemon_cli}`);
   } else {
     if (zelcash_node_status == "expired") {
       console.log("Fluxnode status = " + zelcash_node_status);
@@ -1235,7 +1247,7 @@ async function flux_check() {
 
   if (zelbench_status == "" || typeof zelbench_status == "undefined") {
     console.log("Fluxbench status = dead");
-    console.log(`Bench CLI: ${bench_cli}`)
+    console.log(`Bench CLI: ${bench_cli}`);
   } else {
     if (zelbench_status == "online") {
       console.log("Fluxbench status = " + zelbench_status);
@@ -1246,7 +1258,7 @@ async function flux_check() {
 
   if (zelbench_benchmark_status == "" || typeof zelbench_benchmark_status == "undefined") {
     console.log("Fluxbench status = dead");
-    console.log(`Bench CLI: ${bench_cli}`)
+    console.log(`Bench CLI: ${bench_cli}`);
   } else {
     if (zelbench_benchmark_status == "toaster" || zelbench_benchmark_status == "failed") {
       console.log("Benchmark status = " + zelbench_benchmark_status);
@@ -1314,7 +1326,7 @@ async function flux_check() {
   } else {
     ++zelcashd_counter;
     console.log("Flux daemon status = dead");
-    console.log(`Bench CLI: ${daemon_cli}`)
+    console.log(`Bench CLI: ${daemon_cli}`);
 
     if (zelcashd_counter == "1") {
       error("Flux daemon crash detected!");
