@@ -1,12 +1,11 @@
 const shell = require("shelljs");
+const sleep = require("sleep");
 const moment = require("moment");
 const webhook = require("@prince25/discord-webhook-sender");
 const fs = require("fs");
-const https = require("https");
 const TelegramBot = require("node-telegram-bot-api");
-const axios = require("axios");
 
-shell.exec("sleep 15");
+sleep(15);
 console.log("Watchdog v6.3.0 Starting...");
 console.log("=================================================================");
 
@@ -25,16 +24,7 @@ var watchdog_sleep = "N/A";
 var disc_count = 0;
 var h_IP = 0;
 var component_update = 0;
-var kda_sync = -1;
-var historic_height = 0;
-var kda_lock = 0;
-var no_sync = 0;
-var not_responding = 0;
 var job_count = 0;
-var reset_height = 0;
-var fix_tiggered = 0;
-var kda_sleep = 0;
-var after_fix = 0;
 var sleep_msg = 0;
 
 function between(min, max) {
@@ -51,9 +41,6 @@ async function job_creator() {
   if (job_count % 5 === 0) {
     await flux_check();
   }
-  if (job_count % 17 === 0) {
-    await kda_check();
-  }
   // reset job count
   if (job_count % autoUpdate === 0) {
     job_count = 0;
@@ -68,296 +55,10 @@ function checkIfValidIP(str) {
   return regexExp.test(str);
 }
 
-async function getKadenaNodeHeight(ip) {
-  try {
-    const agent = new https.Agent({
-      rejectUnauthorized: false,
-    });
-    const kadenaData = await axios.get(`https://${ip}:31350/chainweb/0.0/mainnet01/cut`, { httpsAgent: agent, timeout: 5000 });
-    return kadenaData.data.height;
-  } catch (e) {
-    // console.log(`${e}`);
-    return -1;
-  }
-}
-
-async function getKadenaNetworkHeight() {
-  try {
-    const agent = new https.Agent({
-      rejectUnauthorized: false,
-    });
-
-    var kadenaData1 = await axios.get(`https://us-e1.chainweb.com/chainweb/0.0/mainnet01/cut`, { httpsAgent: agent, timeout: 5000 });
-    kadenaData1 = kadenaData1.data.height;
-    // console.log(`Connection 1 ${kadenaData1}`)
-  } catch (e) {
-    var kadenaData1 = -1;
-    // console.log(`Connection 1 ${e}`);
-  }
-
-  try {
-    const agent = new https.Agent({
-      rejectUnauthorized: false,
-    });
-
-    var kadenaData2 = await axios.get(`https://us-w2.chainweb.com/chainweb/0.0/mainnet01/cut`, { httpsAgent: agent, timeout: 5000 });
-    kadenaData2 = kadenaData2.data.height;
-    //console.log(`Connection 2 ${kadenaData2}`);
-  } catch (e) {
-    var kadenaData2 = -1;
-    // console.log(`Connection 2 ${e}`);
-  }
-
-  try {
-    const agent = new https.Agent({
-      rejectUnauthorized: false,
-    });
-    var kadenaData3 = await axios.get(`https://fr1.chainweb.com/chainweb/0.0/mainnet01/cut`, { httpsAgent: agent, timeout: 5000 });
-    kadenaData3 = kadenaData3.data.height;
-  } catch (e) {
-    var kadenaData3 = -1;
-    //console.log(`Connection 3 ${e}`);
-  }
-
-  //    console.log("Bootstrap node height: "+ kadenaData1 + " " +  kadenaData2 + " " + kadenaData3);
-  let kadenaData = max(Number(kadenaData1), Number(kadenaData2), Number(kadenaData3));
-  return kadenaData;
-}
-
-async function kda_check() {
-  let kda_docker_check = await shell.exec(`docker ps --filter name=fluxkadenachainwebnode | wc -l`, { silent: true }).stdout;
-
-  if (kda_docker_check != 2) {
-    console.log(`KDA docker apps not detected!`);
-    console.log(`Check skipped...`);
-    console.log("=================================================================");
-    return;
-  }
-
-  let ip = await Myip();
-  let height = await getKadenaNodeHeight(ip);
-
-  if (historic_height != 0) {
-    if (historic_height == height && kda_lock == 0) {
-      kda_sync = -1;
-      kda_lock = 1;
-      console.log(`KDA sync problem detected! Height: ${height}`);
-      /*error('KDA node sync freez detected!');
-       await discord_hook("KDA node sync freez detected!",web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
-       // KDA error notification telegram
-       var emoji_title = '\u{1F6A8}';
-       var emoji_bell = '\u{1F514}';
-       var info_type = 'Alert '+emoji_bell;
-       var field_type = 'Error: ';
-       var msg_text = 'KDA node sync freez detected!';
-       await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
-
-      shell.exec("sleep 3");
-
-      if (typeof action == "undefined" || action == "1") {
-        reset_height = height;
-        shell.exec(`docker restart fluxkadenachainwebnode`, { silent: true }).stdout;
-
-        let kda_date_docker_check = await shell.exec(`docker ps --filter name=fluxKadenaChainWebData | wc -l`, { silent: true }).stdout;
-
-        if (kda_date_docker_check == 2) {
-          setTimeout(
-            () => {
-              shell.exec(`docker restart fluxKadenaChainWebData`, { silent: true }).stdout;
-            },
-            30 * 60 * 1000
-          ); // In case KadenaChainWebData is installed restart the app after 30m.
-        }
-
-        /*await discord_hook("KDA node restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
-         // Fix action telegram
-         var emoji_title = '\u{26A1}';
-         var emoji_fix = '\u{1F528}';
-         var info_type = 'Fix Action '+emoji_fix;
-         var field_type = 'Info: ';
-         var msg_text = 'KDA node restarted!';
-         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
-        console.log(`Restarting container....`);
-      }
-      console.log("=================================================================");
-      return;
-    }
-  }
-
-  if (height != -1) {
-    historic_height = height;
-    console.log("KDA Node height: " + height);
-  }
-
-  // if ( height  == -1 ) {
-  // console.log(`Info: KDA node height unavailable!`);
-  // }
-
-  let network_height = await getKadenaNetworkHeight();
-  console.log("KDA Network height: " + network_height);
-
-  if (network_height == -1) {
-    console.log(`Error: KDA network height unavailable! Check Skipped...`);
-    console.log("=================================================================");
-    return;
-  }
-
-  let network_diff = Math.abs(network_height - height);
-
-  if (height == -1 && kda_sync != -1) {
-    let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' fluxkadenachainwebnode`, { silent: true });
-
-    console.log(`KDA docker status: ${docker_status.trim()}`);
-    console.log(`Error: KDA node height unavailable!`);
-
-    if (docker_status.indexOf("starting") == "-1") {
-      ++not_responding;
-    }
-
-    if (not_responding == 2) {
-      kda_sync = -1;
-      /*error(`KDA node height unavailable! KDA node not working correct!`);
-     await discord_hook(`KDA node not working correct!\nDocker status: **${docker_status.trim()}**`,web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
-     // KDA error notification telegram
-     var emoji_title = '\u{1F6A8}';
-     var emoji_bell = '\u{1F514}';
-     var info_type = 'Alert '+emoji_bell;
-     var field_type = 'Error: ';
-     var msg_text = "KDA node not working correct! \nDocker status: <b>"+docker_status.trim()+"</b>";
-     await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
-
-      if (typeof action == "undefined" || action == "1") {
-        fix_tiggered = 1;
-        shell.exec(`docker restart fluxkadenachainwebnode`, { silent: true }).stdout;
-
-        let kda_date_docker_check = await shell.exec(`docker ps --filter name=fluxKadenaChainWebData | wc -l`, { silent: true }).stdout;
-
-        if (kda_date_docker_check == 2) {
-          setTimeout(
-            () => {
-              shell.exec(`docker restart fluxKadenaChainWebData`, { silent: true }).stdout;
-            },
-            30 * 60 * 1000
-          ); // In case KadenaChainWebData is installed restart the app after 30m.
-        }
-
-        /*await discord_hook("KDA node restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
-        // Fix action telegram
-        var emoji_title = '\u{26A1}';
-        var emoji_fix = '\u{1F528}';
-        var info_type = 'Fix Action '+emoji_fix;
-        var field_type = 'Info: ';
-        var msg_text = 'KDA node restarted!';
-        await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
-        console.log(`Restarting container....`);
-      }
-
-      console.log("=================================================================");
-      return;
-    }
-  } else {
-    if (height == -1) {
-      ++after_fix;
-
-      if (fix_tiggered == 1 && after_fix == 2) {
-        after_fix = 0;
-
-        if (kda_sleep == 0) {
-          kda_sleep = 1;
-          /*await discord_hook("KDA Watchdog in sleep mode..\nManual operation needed!",web_hook_url,ping,'Alert','#EA1414','Info','watchdog_manual1.png',label);
-           // KDA Watchdog in sleep mode notification telegram
-           var emoji_title = '\u{1F6A8}';
-           var emoji_bell = '\u{1F514}';
-           var info_type = 'Alert '+emoji_bell;
-           var field_type = 'Info: ';
-           var msg_text = "<b>KDA Watchdog in sleep mode!</b> \n\u{203C} <b>Manual operation needed</b> \u{203C}";
-           await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
-        }
-      }
-
-      let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' fluxkadenachainwebnode`, { silent: true });
-      console.log(`Error: KDA node not working correct!`);
-      console.log(`KDA docker status: ${docker_status.trim()}`);
-      console.log("=================================================================");
-      return;
-    }
-  }
-
-  if (height != -1) {
-    not_responding = 0;
-    kda_sleep = 0;
-    after_fix = 0;
-
-    if (fix_tiggered == 1) {
-      fix_tiggered = 0;
-
-      if (typeof action == "undefined" || action == "1") {
-        /*await discord_hook("KDA node fixed! Apps responding...",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
-      // Daemon fixed notification telegram
-      var emoji_title = '\u{1F4A1}';
-      var emoji_fixed = '\u{2705}';
-      var info_type = 'Fixed Info '+emoji_fixed;
-      var field_type = 'Info: ';
-      var msg_text = "KDA node fixed!";
-      await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
-      }
-    }
-  }
-
-  if (network_diff < 3000) {
-    if (kda_lock == 1 && reset_height != height) {
-      if (typeof action == "undefined" || action == "1") {
-        /*await discord_hook("KDA node sync fixed!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
-        // Daemon fixed notification telegram
-        var emoji_title = '\u{1F4A1}';
-        var emoji_fixed = '\u{2705}';
-        var info_type = 'Fixed Info '+emoji_fixed;
-        var field_type = 'Info: ';
-        var msg_text = 'KDA node sync fixed!';
-        await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
-      }
-    }
-
-    if (reset_height != height) {
-      kda_lock = 0;
-    }
-
-    kda_sync = 1;
-    no_sync = 0;
-    console.log(`KDA node synced with network, diff: ${network_diff}`);
-  } else {
-    if (kda_sync != -1 && height != -1) {
-      kda_sync = -1;
-
-      if (no_sync == 0) {
-        no_sync = 1;
-        console.log(`KDA node not synced with network, diff: ${network_diff}`);
-        /*error(`KDA node not synced with network, diff: ${network_diff}`);
-         await discord_hook(`KDA node not synced, diff:**${network_diff}**`,web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
-         // KDA error notification telegram
-         var emoji_title = '\u{1F6A8}';
-         var emoji_bell = '\u{1F514}';
-         var info_type = 'Alert '+emoji_bell;
-         var field_type = 'Error: ';
-         var msg_text = "KDA node not synced, diff: <b>"+network_diff+"</b>";
-         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
-        shell.exec("sleep 3");
-      }
-    }
-  }
-
-  if (kda_sync == -1) {
-    console.log(`Awaiting for full sync with KDA network...`);
-  }
-
-  let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' fluxkadenachainwebnode`, { silent: true });
-  console.log(`KDA docker status: ${docker_status.trim()}`);
-  console.log("=================================================================");
-}
 async function Myip() {
   const check_list = ["ifconfig.me", "api4.my-ip.io/ip", "checkip.amazonaws.com", "api.ipify.org"];
   var MyIP = null;
-  for (const [index, val] of check_list.entries()) {
+  for (const [_index, val] of check_list.entries()) {
     MyIP = await shell.exec(`curl -sk -m 10 https://${val} | tr -dc '[:alnum:].'`, { silent: true }).stdout;
 
     if (checkIfValidIP(MyIP)) {
@@ -679,7 +380,7 @@ if (fs.existsSync(path)) {
     console.log("========================");
   }
 
-  shell.exec("sleep 3");
+  sleep(3);
   var config = require("./config.js");
   var web_hook_url = config.web_hook_url;
   var action = config.action;
@@ -814,7 +515,7 @@ async function auto_update() {
 
         console.log("Update successfully.");
       }
-      shell.exec("sleep 20");
+      sleep(20);
       console.log(" ");
     }
   }
@@ -848,7 +549,7 @@ async function auto_update() {
 
           console.log("Update successfully.");
         }
-        shell.exec("sleep 20");
+        sleep(20);
         console.log(" ");
       }
     }
@@ -888,11 +589,11 @@ async function auto_update() {
           await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
           console.log("Update successfully.");
           console.log(" ");
-          shell.exec("sleep 2");
+          sleep(2);
         } else {
           console.log("Script called.");
           console.log(" ");
-          shell.exec("sleep 2");
+          sleep(2);
         }
       }
     }
@@ -942,11 +643,11 @@ async function auto_update() {
 
           console.log("Update successfully.");
           console.log(" ");
-          shell.exec("sleep 2");
+          sleep(2);
         } else {
           console.log("Script called.");
           console.log(" ");
-          shell.exec("sleep 2");
+          sleep(2);
         }
       }
     }
@@ -1098,7 +799,7 @@ async function flux_check() {
     var zelcash_last_paid_height = zelcash_getzelnodestatus_info.last_paid_height;
     var activesince = zelcash_getzelnodestatus_info.activesince;
     var lastpaid = zelcash_getzelnodestatus_info.lastpaid;
-  } catch (error) {    
+  } catch (error) {
     console.log(error.message ?? error);
   }
 
@@ -1119,7 +820,7 @@ async function flux_check() {
       var field_type = "Error: ";
       var msg_text = "Flux benchmark crash detected!";
       await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
-      shell.exec("sleep 2");
+      sleep(2);
     }
 
     if (typeof action == "undefined" || action == "1") {
@@ -1201,7 +902,7 @@ async function flux_check() {
         var msg_text = "FluxOS disconnected!";
         await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
 
-        shell.exec("sleep 2");
+        sleep(2);
         lock_zelback = 1;
       }
 
@@ -1331,7 +1032,7 @@ async function flux_check() {
       var field_type = "Error: ";
       var msg_text = "Flux daemon crash detected!";
       await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
-      shell.exec("sleep 2");
+      sleep(2);
     }
 
     if (typeof action == "undefined" || action == "1") {
@@ -1367,7 +1068,7 @@ async function flux_check() {
       var msg_text = "MongoDB crash detected!";
       await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
 
-      shell.exec("sleep 2");
+      sleep(2);
     }
 
     if (mongod_counter < 3) {
