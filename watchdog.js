@@ -5,7 +5,7 @@ const webhook = require("@prince25/discord-webhook-sender");
 const fs = require("fs");
 const TelegramBot = require("node-telegram-bot-api");
 
-sleep(15);
+sleep.sleep(15);
 console.log("Watchdog v6.3.0 Starting...");
 console.log("=================================================================");
 
@@ -380,7 +380,7 @@ if (fs.existsSync(path)) {
     console.log("========================");
   }
 
-  sleep(3);
+  sleep.sleep(3);
   var config = require("./config.js");
   var web_hook_url = config.web_hook_url;
   var action = config.action;
@@ -515,7 +515,7 @@ async function auto_update() {
 
         console.log("Update successfully.");
       }
-      sleep(20);
+      sleep.sleep(20);
       console.log(" ");
     }
   }
@@ -549,7 +549,7 @@ async function auto_update() {
 
           console.log("Update successfully.");
         }
-        sleep(20);
+        sleep.sleep(20);
         console.log(" ");
       }
     }
@@ -589,11 +589,11 @@ async function auto_update() {
           await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
           console.log("Update successfully.");
           console.log(" ");
-          sleep(2);
+          sleep.sleep(2);
         } else {
           console.log("Script called.");
           console.log(" ");
-          sleep(2);
+          sleep.sleep(2);
         }
       }
     }
@@ -643,11 +643,11 @@ async function auto_update() {
 
           console.log("Update successfully.");
           console.log(" ");
-          sleep(2);
+          sleep.sleep(2);
         } else {
           console.log("Script called.");
           console.log(" ");
-          sleep(2);
+          sleep.sleep(2);
         }
       }
     }
@@ -820,7 +820,7 @@ async function flux_check() {
       var field_type = "Error: ";
       var msg_text = "Flux benchmark crash detected!";
       await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
-      sleep(2);
+      sleep.sleep(2);
     }
 
     if (typeof action == "undefined" || action == "1") {
@@ -902,7 +902,7 @@ async function flux_check() {
         var msg_text = "FluxOS disconnected!";
         await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
 
-        sleep(2);
+        sleep.sleep(2);
         lock_zelback = 1;
       }
 
@@ -1032,7 +1032,7 @@ async function flux_check() {
       var field_type = "Error: ";
       var msg_text = "Flux daemon crash detected!";
       await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
-      sleep(2);
+      sleep.sleep(2);
     }
 
     if (typeof action == "undefined" || action == "1") {
@@ -1068,7 +1068,7 @@ async function flux_check() {
       var msg_text = "MongoDB crash detected!";
       await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
 
-      sleep(2);
+      sleep.sleep(2);
     }
 
     if (mongod_counter < 3) {
