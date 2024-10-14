@@ -565,10 +565,10 @@ async function Check_Sync(height,time) {
        if ( typeof action  == "undefined" || action == "1" ){
 
 
-         shell.exec("sudo systemctl stop zelcash",{ silent: true });
+         shell.exec("sudo systemctl stop fluxd.service",{ silent: true });
          sleep.sleep(2);
-         shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
-         shell.exec("sudo systemctl start zelcash",{ silent: true });
+        //  shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
+         shell.exec("sudo systemctl start fluxd.service",{ silent: true });
          console.log(time+' => Flux daemon restarting...');
          await discord_hook("Flux daemon restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
@@ -942,11 +942,11 @@ async function auto_update() {
        console.log('Local version: '+zelflux_local_version.trim());
        console.log('Remote version: '+zelflux_remote_version.trim());
        console.log('=================================================================');
-       shell.exec("pm2 stop flux",{ silent: true }).stdout;
+       shell.exec("systemctl stop fluxos.service",{ silent: true }).stdout;
        sleep.sleep(5);
        shell.exec("cd /home/$USER/zelflux && git checkout . && git fetch && git pull -p",{ silent: true }).stdout;
        sleep.sleep(5);
-       shell.exec("pm2 start flux",{ silent: true }).stdout;
+       shell.exec("systemctl start fluxos.service",{ silent: true }).stdout;
        sleep.sleep(20);
        var zelflux_lv = shell.exec("jq -r '.version' /home/$USER/zelflux/package.json",{ silent: true }).stdout;
        if ( zelflux_remote_version.trim() == zelflux_lv.trim() ) {
@@ -988,13 +988,13 @@ async function auto_update() {
 
       }
       var zelcash_dpkg_version_before = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
-      shell.exec("sudo systemctl stop zelcash",{ silent: true })
-      shell.exec("sudo fuser -k 16125/tcp",{ silent: true })
+      shell.exec("sudo systemctl stop fluxd.service",{ silent: true })
+      // shell.exec("sudo fuser -k 16125/tcp",{ silent: true })
       shell.exec("sudo apt-get update",{ silent: true })
       shell.exec("sudo apt-get install flux -y",{ silent: true })
       var zelcash_dpkg_version_after = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
       sleep.sleep(2);
-      shell.exec("sudo systemctl start zelcash",{ silent: true })
+      shell.exec("sudo systemctl start fluxd.service",{ silent: true })
       if ( (zelcash_dpkg_version_before !== zelcash_dpkg_version_after) && zelcash_dpkg_version_after != "" ){
         await discord_hook(`Fluxnode daemon updated!\nVersion: **${zelcash_dpkg_version_after}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
         // Update notification daemon
@@ -1045,12 +1045,12 @@ if (config.zelbench_update == "1") {
 
 
    var zelbench_dpkg_version_before = shell.exec(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`,{ silent: true }).stdout;
-   shell.exec("sudo systemctl stop zelcash",{ silent: true })
-   shell.exec("sudo fuser -k 16125/tcp",{ silent: true })
+   shell.exec("sudo systemctl stop fluxd.service",{ silent: true })
+  //  shell.exec("sudo fuser -k 16125/tcp",{ silent: true })
    shell.exec("sudo apt-get update",{ silent: true })
    shell.exec("sudo apt-get install fluxbench -y",{ silent: true })
    sleep.sleep(2);
-   shell.exec("sudo systemctl start zelcash",{ silent: true })
+   shell.exec("sudo systemctl start fluxd.service",{ silent: true })
 
    var zelbench_dpkg_version_after = shell.exec(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`,{ silent: true }).stdout;
 
@@ -1091,7 +1091,7 @@ async function flux_check() {
   ping=config.ping;
   label=config.label; 
 
-  const service_inactive = shell.exec("systemctl list-units --full -all | grep 'zelcash' | grep -o 'inactive'",{ silent: true }).stdout;
+  const service_inactive = shell.exec("systemctl list-units --full -all | grep 'fluxd.service' | grep -o 'inactive'",{ silent: true }).stdout;
   const data_time_utc = moment.utc().format('YYYY-MM-DD HH:mm:ss');
   const stillUtc = moment.utc(data_time_utc).toDate();
   const local = moment(stillUtc).local().format('YYYY-MM-DD HH:mm:ss');
@@ -1114,8 +1114,8 @@ if ( service_inactive.trim() == "inactive" ) {
   ++inactive_counter;
   console.log('============================================================['+inactive_counter+']');
   if ( inactive_counter > 6 ) {
-    shell.exec("sudo fuser -k 16125/tcp",{ silent: true })
-    shell.exec("sudo systemctl start zelcash",{ silent: true })
+    // shell.exec("sudo fuser -k 16125/tcp",{ silent: true })
+    shell.exec("sudo systemctl start fluxd.service",{ silent: true })
     inactive_counter=0;
    } else {
    return;
@@ -1249,10 +1249,10 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_check !== "undefine
    }
 
    if ( typeof action  == "undefined" || action == "1" ){
-      shell.exec("sudo systemctl stop zelcash",{ silent: true });
+      shell.exec("sudo systemctl stop fluxd.service",{ silent: true });
       sleep.sleep(2);
-      shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
-      shell.exec("sudo systemctl start zelcash",{ silent: true });
+      // shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
+      shell.exec("sudo systemctl start fluxd.service",{ silent: true });
       console.log(data_time_utc+' => Flux daemon restarting...');
       await discord_hook("Flux benchmark restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
@@ -1345,8 +1345,8 @@ if (zelback_status == "" || typeof zelback_status == "undefined"){
      if ( typeof action  == "undefined" || action == "1" ){
 
        if ( disc_count == 2 ){
-        shell.exec("pm2 restart flux",{ silent: true });
-        shell.exec("sudo systemctl restart zelcash",{ silent: true });
+        shell.exec("systemctl restart fluxos.service",{ silent: true });
+        shell.exec("sudo systemctl restart fluxd.service",{ silent: true });
         sleep.sleep(2);
         console.log(data_time_utc+' => FluxOS restarting...');
         await discord_hook("FluxOS restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
@@ -1490,10 +1490,10 @@ else {
    }
 
    if ( typeof action  == "undefined" || action == "1" ){
-      shell.exec("sudo systemctl stop zelcash",{ silent: true });
+      shell.exec("sudo systemctl stop fluxd.service",{ silent: true });
       sleep.sleep(2);
-      shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
-      shell.exec("sudo systemctl start zelcash",{ silent: true });
+      // shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
+      shell.exec("sudo systemctl start fluxd.service",{ silent: true });
       console.log(data_time_utc+' => Flux daemon restarting...');
       await discord_hook("Flux daemon restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
