@@ -595,7 +595,7 @@ if (fs.existsSync(path)) {
   var daemon_package_name='zelcash';
 
   if (fs.existsSync(`/usr/local/bin/flux-cli`)) {
-     daemon_cli='flux-cli';
+     daemon_cli='flux-cli -conf=/dat/var/lib/fluxd/flux.conf';
      daemon_package_name='flux';
   }
 
@@ -708,7 +708,7 @@ else {
   var daemon_package_name='zelcash';
 
   if (fs.existsSync(`/usr/local/bin/flux-cli`)) {
-     daemon_cli='flux-cli';
+     daemon_cli='flux-cli -conf=/dat/var/lib/fluxd/flux.conf';
      daemon_package_name='flux';
   }
 
