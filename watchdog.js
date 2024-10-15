@@ -896,7 +896,7 @@ function error(args) {
 async function auto_update() {
   delete require.cache[require.resolve('./config.js')];
   var config = require('./config.js');
-  var remote_version = shell.exec("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/fluxnode-watchdog/master/package.json | jq -r '.version'",{ silent: true }).stdout;
+  var remote_version = shell.exec("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/fluxnode-watchdog/feature/fluxos_image/package.json | jq -r '.version'",{ silent: true }).stdout;
   var local_version = shell.exec("jq -r '.version' package.json",{ silent: true }).stdout;
   console.log(' UPDATE CHECKING....');
   console.log('=================================================================');
@@ -908,7 +908,7 @@ async function auto_update() {
       console.log('Local version: '+local_version.trim());
       console.log('Remote version: '+remote_version.trim());
       console.log('=================================================================');
-      shell.exec("cd /home/$USER/watchdog && git checkout . && git fetch && git pull -p",{ silent: true }).stdout;
+      shell.exec("cd /dat/usr/lib/fluxnodewatchdog && git checkout . && git fetch && git pull -p",{ silent: true }).stdout;
       var local_ver = shell.exec("jq -r '.version' package.json",{ silent: true }).stdout;
       if ( local_ver.trim() == remote_version.trim() ){
         await discord_hook(`Fluxnode Watchdog updated!\nVersion: **${remote_version}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
@@ -929,7 +929,7 @@ async function auto_update() {
   }
   if (config.zelflux_update == "1") {
 
-   var zelflux_remote_version = shell.exec("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json | jq -r '.version'",{ silent: true }).stdout;
+   var zelflux_remote_version = shell.exec("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/flux/feature/fluxos_image/package.json | jq -r '.version'",{ silent: true }).stdout;
    var zelflux_local_version = shell.exec("jq -r '.version' /home/$USER/zelflux/package.json",{ silent: true }).stdout;
 
    console.log(`FluxOS current: ${zelflux_remote_version.trim()} installed: ${zelflux_local_version.trim()}`);
@@ -944,7 +944,7 @@ async function auto_update() {
        console.log('=================================================================');
        shell.exec("systemctl stop fluxos.service",{ silent: true }).stdout;
        sleep.sleep(5);
-       shell.exec("cd /home/$USER/zelflux && git checkout . && git fetch && git pull -p",{ silent: true }).stdout;
+       shell.exec("cd /dat/usr/lib/fluxos && git checkout . && git fetch && git pull -p",{ silent: true }).stdout;
        sleep.sleep(5);
        shell.exec("systemctl start fluxos.service",{ silent: true }).stdout;
        sleep.sleep(20);
