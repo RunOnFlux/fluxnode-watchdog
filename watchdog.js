@@ -422,7 +422,7 @@ async function discord_hook(node_msg,web_hook_url,ping,title,color,field_name,th
 
       if ( typeof ping == "undefined" || ping == "0") {
           var node_ip = await Myip();
-          var api_port = await shell.exec("grep -w apiport /home/$USER/zelflux/config/userconfig.js | grep -o '[[:digit:]]*'",{ silent: true });
+          var api_port = await shell.exec("grep -w apiport /dat/usr/lib/fluxos/config/userconfig.js | grep -o '[[:digit:]]*'",{ silent: true });
           if ( api_port == "" ){
              var ui_port = 16126;
           } else {
@@ -457,7 +457,7 @@ async function discord_hook(node_msg,web_hook_url,ping,title,color,field_name,th
 
       } else {
           var node_ip = await Myip();
-          var api_port = await shell.exec("grep -w apiport /home/$USER/zelflux/config/userconfig.js | grep -o '[[:digit:]]*'",{ silent: true });
+          var api_port = await shell.exec("grep -w apiport /dat/usr/lib/fluxos/config/userconfig.js | grep -o '[[:digit:]]*'",{ silent: true });
           if ( api_port == "" ){
              var ui_port = 16126;
           } else {
@@ -846,7 +846,7 @@ async function send_telegram_msg(emoji_title,info_type,field_type,msg_text,label
   if  ( typeof telegram_alert !== "undefined" && telegram_alert == 1 ) {
 
     const node_ip = await Myip();
-    var api_port = await shell.exec("grep -w apiport /home/$USER/zelflux/config/userconfig.js | grep -o '[[:digit:]]*'",{ silent: true });
+    var api_port = await shell.exec("grep -w apiport /dat/usr/lib/fluxos/config/userconfig.js | grep -o '[[:digit:]]*'",{ silent: true });
           if ( api_port == "" ){
              var ui_port = 16126;
           } else {
@@ -930,7 +930,7 @@ async function auto_update() {
   if (config.zelflux_update == "1") {
 
    var zelflux_remote_version = shell.exec("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/flux/feature/fluxos_image/package.json | jq -r '.version'",{ silent: true }).stdout;
-   var zelflux_local_version = shell.exec("jq -r '.version' /home/$USER/zelflux/package.json",{ silent: true }).stdout;
+   var zelflux_local_version = shell.exec("jq -r '.version' /dat/usr/lib/fluxos/package.json",{ silent: true }).stdout;
 
    console.log(`FluxOS current: ${zelflux_remote_version.trim()} installed: ${zelflux_local_version.trim()}`);
    if ( zelflux_remote_version.trim() != "" && zelflux_local_version.trim() != "" ){
@@ -948,7 +948,7 @@ async function auto_update() {
        sleep.sleep(5);
        shell.exec("systemctl start fluxos.service",{ silent: true }).stdout;
        sleep.sleep(20);
-       var zelflux_lv = shell.exec("jq -r '.version' /home/$USER/zelflux/package.json",{ silent: true }).stdout;
+       var zelflux_lv = shell.exec("jq -r '.version' /dat/usr/lib/fluxos/package.json",{ silent: true }).stdout;
        if ( zelflux_remote_version.trim() == zelflux_lv.trim() ) {
 
          await discord_hook(`FluxOS updated!\nVersion: **${zelflux_remote_version}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
@@ -1323,7 +1323,7 @@ if (zelback_status == "" || typeof zelback_status == "undefined"){
     console.log('FluxOS status = '+zelback_status);
     if ( lock_zelback != "1" && disc_count == 2) {
     error('FluxOS disconnected!');
-    var flux_api_port = await shell.exec("grep -w apiport /home/$USER/zelflux/config/userconfig.js | grep -o '[[:digit:]]*'",{ silent: true });
+    var flux_api_port = await shell.exec("grep -w apiport /dat/usr/lib/fluxos/config/userconfig.js | grep -o '[[:digit:]]*'",{ silent: true });
     var port_api = Number(flux_api_port.trim());
     var error_output=shell.exec(`curl -sSL -m 10 http://localhost:${port_api}/id/loginphrase`,{ silent: true }).stdout;
     error(`Error: ${error_output}`);
@@ -1574,7 +1574,7 @@ return;
 
 if ( zelbench_benchmark_status == "toaster" || zelbench_benchmark_status == "failed" ){
   ++zelbench_counter;
-  var error_line=shell.exec("egrep -a --color 'Failed' /home/$USER/.fluxbenchmark/debug.log | tail -1 | sed 's/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.//'",{ silent: true });
+  var error_line=shell.exec("egrep -a --color 'Failed' /dat/sr/lib/fluxbenchd/debug.log | tail -1 | sed 's/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.//'",{ silent: true });
   error('Benchmark problem detected! Fluxbench status: '+zelbench_benchmark_status);
   error('Reason: '+error_line.trim());
   console.log('Benchmark problem detected! Fluxbench status: '+zelbench_benchmark_status);
