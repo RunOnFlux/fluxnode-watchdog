@@ -929,7 +929,7 @@ async function auto_update() {
   }
   if (config.zelflux_update == "1") {
 
-   var zelflux_remote_version = shell.exec("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/flux/feature/fluxos_image/package.json | jq -r '.version'",{ silent: true }).stdout;
+   var zelflux_remote_version = shell.exec("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json | jq -r '.version'",{ silent: true }).stdout;
    var zelflux_local_version = shell.exec("jq -r '.version' /dat/usr/lib/fluxos/package.json",{ silent: true }).stdout;
 
    console.log(`FluxOS current: ${zelflux_remote_version.trim()} installed: ${zelflux_local_version.trim()}`);
