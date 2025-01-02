@@ -946,6 +946,8 @@ async function auto_update() {
        sleep.sleep(5);
        shell.exec("cd /dat/usr/lib/fluxos && git checkout . && git fetch && git pull -p",{ silent: true }).stdout;
        sleep.sleep(5);
+       shell.exec("cd /dat/usr/lib/fluxos && npm install --omit=dev --cache /dat/usr/lib/npm")
+       sleep.sleep(5);
        shell.exec("systemctl start fluxos.service",{ silent: true }).stdout;
        sleep.sleep(20);
        var zelflux_lv = shell.exec("jq -r '.version' /dat/usr/lib/fluxos/package.json",{ silent: true }).stdout;
