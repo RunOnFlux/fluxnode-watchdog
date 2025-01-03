@@ -603,9 +603,9 @@ async function Check_Sync(height,time) {
 // this appears to be the main entrypoint
 
 if (fs.existsSync(configPath)) {
-  const home_dir = shell.exec("echo $HOME",{ silent: true }).stdout;
-  let daemonConfigPath = `${home_dir.trim()}/.zelcash/zelcash.conf`;
-  let daemon_cli='zelcash-cli';
+  var home_dir = shell.exec("echo $HOME",{ silent: true }).stdout;
+  var daemonConfigPath = `${home_dir.trim()}/.zelcash/zelcash.conf`;
+  var daemon_cli='zelcash-cli';
 
   if (fs.existsSync(`/usr/local/bin/flux-cli`)) {
      daemon_cli = isArcane
