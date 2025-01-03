@@ -982,7 +982,7 @@ async function auto_update() {
        shell.exec(`cd ${fluxOsRootDir} && git checkout . && git fetch && git pull -p`,{ silent: true }).stdout;
        sleep.sleep(5);
        shell.exec(fluxOsInstallCmd,{ silent: true }).stdout;
-       if (fluxOsRootDir) sleep.sleep(5);
+       if (isArcane) sleep.sleep(5);
        shell.exec(fluxOsStartCmd,{ silent: true }).stdout;
        sleep.sleep(20);
        var zelflux_lv = shell.exec(`jq -r '.version' ${fluxOsPkgFile}`,{ silent: true }).stdout;
@@ -1149,7 +1149,7 @@ async function flux_check() {
   ping=config.ping;
   label=config.label; 
 
-  const service_inactive = shell.exec("systemctl list-units --full -all | grep 'fluxd.service' | grep -o 'inactive'",{ silent: true }).stdout;
+  const service_inactive = shell.exec(`systemctl list-units --full -all | grep '${fluxdServiceName}' | grep -o 'inactive'`,{ silent: true }).stdout;
   const data_time_utc = moment.utc().format('YYYY-MM-DD HH:mm:ss');
   const stillUtc = moment.utc(data_time_utc).toDate();
   const local = moment(stillUtc).local().format('YYYY-MM-DD HH:mm:ss');
