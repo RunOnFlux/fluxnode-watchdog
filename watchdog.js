@@ -19,6 +19,12 @@ const fluxdConfigPath = process.env.FLUXD_CONFIG_PATH;
 const fluxOsRootDir = process.env.FLUXOS_PATH;
 const fluxbenchPath = process.env.FLUXBENCH_PATH;
 
+const fluxOsConfigPath = isArcane
+  ? path.join(fluxOsRootDir, "config/userconfig.js")
+  : "/home/$USER/zelflux/config/userconfig.js";
+
+const fluxdServiceName = isArcane ? "fluxd.service" : "zelcash.service";
+
 var sync_lock = 0;
 var tire_lock=0;
 var lock_zelback=0;
@@ -424,16 +430,12 @@ async function Myip(){
 return MyIP;
 }
 async function discord_hook(node_msg,web_hook_url,ping,title,color,field_name,thumbnail_png,label) {
-  const fluxOsConfigPath = isArcane
-    ? path.join(fluxOsRootDir, "config/userconfig.js")
-    : "/home/$USER/zelflux/config/userconfig.js";
-
   if ( typeof web_hook_url !== "undefined" && web_hook_url !== "0" ) {
 
       if ( typeof ping == "undefined" || ping == "0") {
 
           var node_ip = await Myip();
-          var api_port = await shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`,{ silent: true });
+          var api_port = shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`,{ silent: true });
           if ( api_port == "" ){
              var ui_port = 16126;
           } else {
@@ -512,8 +514,6 @@ function max() {
     }));
 }
 async function Check_Sync(height,time) {
-    const fluxdServiceName = isArcane ? "fluxd" : "zelcash"
-
   // var exec_comment1=`curl -sk -m 8 https://explorer.flux.zelcore.io/api/status?q=getInfo | jq '.info.blocks'`
   var exec_comment2=`curl -sk -m 8 https://explorer.runonflux.io/api/status?q=getInfo | jq '.info.blocks'`
   var exec_comment3=`curl -sk -m 8 https://explorer.zelcash.online/api/status?q=getInfo | jq '.info.blocks'`
@@ -849,10 +849,6 @@ console.log('=================================================================')
 
 }
 async function send_telegram_msg(emoji_title,info_type,field_type,msg_text,label) {
-  const fluxOsConfigPath = isArcane
-    ? path.join(fluxOsRootDir, "config/userconfig.js")
-    : "/home/$USER/zelflux/config/userconfig.js";
-
   var telegram_alert = config.telegram_alert;
 
   if  ( typeof telegram_alert !== "undefined" && telegram_alert == 1 ) {
@@ -924,10 +920,6 @@ async function auto_update() {
   const fluxOsPkgFile = isArcane
     ? path.join(fluxOsRootDir, "package.json")
     : "/home/$USER/zelflux/package.json";
-
-  const fluxdServiceName = isArcane
-    ? "fluxd.service"
-    : "zelcash.service"
 
   delete require.cache[require.resolve('./config.js')];
   var config = require('./config.js');
@@ -1124,15 +1116,9 @@ console.log('=================================================================')
 
 }
 async function flux_check() {
-  const fluxdServiceName = isArcane
-  ? "fluxd.service"
-  : "zelcash.service";
-  
   const fluxbenchServiceName = isArcane
   ? "fluxbenchd.service"
   : "zelcash.service";
-
-  const fluxOsConfigPath = path.join(fluxOsRootDir, "config/userconfig.js");
   
   const fluxOsRestartCmd = isArcane
     ? "sudo systemctl restart fluxos.service"
@@ -1149,7 +1135,7 @@ async function flux_check() {
   ping=config.ping;
   label=config.label; 
 
-  const service_inactive = shell.exec(`systemctl list-units --full -all | grep '${fluxdServiceName}' | grep -o 'inactive'`,{ silent: true }).stdout;
+  const service_inactive = shell.exec(`systemctl list-units --full -all | grep ${fluxdServiceName} | grep -o inactive`,{ silent: true }).stdout;
   const data_time_utc = moment.utc().format('YYYY-MM-DD HH:mm:ss');
   const stillUtc = moment.utc(data_time_utc).toDate();
   const local = moment(stillUtc).local().format('YYYY-MM-DD HH:mm:ss');
