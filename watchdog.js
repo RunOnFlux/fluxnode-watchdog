@@ -13,7 +13,11 @@ console.log('Watchdog v6.3.1 Starting...');
 console.log('=================================================================');
 
 const configPath = 'config.js';
+
 const isArcane = Boolean(process.env.FLUXOS_PATH);
+const fluxdConfigPath = process.env.FLUXD_CONFIG_PATH;
+const fluxOsRootDir = process.env.FLUXOS_PATH;
+const fluxbenchPath = process.env.FLUXBENCH_PATH;
 
 var sync_lock = 0;
 var tire_lock=0;
@@ -420,9 +424,7 @@ async function Myip(){
 return MyIP;
 }
 async function discord_hook(node_msg,web_hook_url,ping,title,color,field_name,thumbnail_png,label) {
-  const fluxOsRootDir = process.env.FLUXOS_PATH;
-
-  const fluxOsConfigPath = fluxOsRootDir
+  const fluxOsConfigPath = isArcane
     ? path.join(fluxOsRootDir, "config/userconfig.js")
     : "/home/$USER/zelflux/config/userconfig.js";
 
@@ -510,7 +512,7 @@ function max() {
     }));
 }
 async function Check_Sync(height,time) {
-    const fluxdServiceName = process.env.FLUXOS_PATH ? "fluxd" : "zelcash"
+    const fluxdServiceName = isArcane ? "fluxd" : "zelcash"
 
   // var exec_comment1=`curl -sk -m 8 https://explorer.flux.zelcore.io/api/status?q=getInfo | jq '.info.blocks'`
   var exec_comment2=`curl -sk -m 8 https://explorer.runonflux.io/api/status?q=getInfo | jq '.info.blocks'`
@@ -601,14 +603,12 @@ async function Check_Sync(height,time) {
 // this appears to be the main entrypoint
 
 if (fs.existsSync(configPath)) {
-  const fluxdConfigPath = process.env.FLUXD_CONFIG_PATH;
-
   const home_dir = shell.exec("echo $HOME",{ silent: true }).stdout;
   let daemonConfigPath = `${home_dir.trim()}/.zelcash/zelcash.conf`;
   let daemon_cli='zelcash-cli';
 
   if (fs.existsSync(`/usr/local/bin/flux-cli`)) {
-     daemon_cli = fluxdConfigPath
+     daemon_cli = isArcane
        ? `flux-cli -conf=${fluxdConfigPath}`
        : "flux-cli";
   }
@@ -713,20 +713,19 @@ console.log('=> FluxOS:  disabled');
 console.log('=================================================================');
 } 
 else {
-  const fluxdConfigPath = process.env.FLUXD_CONFIG_PATH;
   const home_dir = shell.exec("echo $HOME",{ silent: true }).stdout;
   let daemonConfigPath = `${home_dir.trim()}/.zelcash/zelcash.conf`;
   var daemon_cli='zelcash-cli';
   var bench_cli='zelbench-cli';
 
   if (fs.existsSync(`/usr/local/bin/flux-cli`)) {
-    daemon_cli = process.env.FLUXOS_PATH
-    ? `flux-cli -conf=${process.env.FLUXD_CONFIG_PATH}`
+    daemon_cli = isArcane
+    ? `flux-cli -conf=${fluxdConfigPath}`
     : "flux-cli";
   }
 
   if (!fs.existsSync(daemonConfigPath)) {
-    daemonConfigPath = fluxdConfigPath
+    daemonConfigPath = isArcane
        ? fluxdConfigPath
        : `${home_dir.trim()}/.flux/flux.conf`;
    }
@@ -850,14 +849,16 @@ console.log('=================================================================')
 
 }
 async function send_telegram_msg(emoji_title,info_type,field_type,msg_text,label) {
-  const fluxOsRootDir = process.env.FLUXOS_PATH
-  const fluxOsConfigPath = fluxOsRootDir ? path.join(fluxOsRootDir, 'config/userconfig.js') : '/home/$USER/zelflux/config/userconfig.js';
+  const fluxOsConfigPath = isArcane
+    ? path.join(fluxOsRootDir, "config/userconfig.js")
+    : "/home/$USER/zelflux/config/userconfig.js";
+
   var telegram_alert = config.telegram_alert;
 
   if  ( typeof telegram_alert !== "undefined" && telegram_alert == 1 ) {
 
     const node_ip = await Myip();
-    var api_port = await shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`,{ silent: true });
+    var api_port = shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`,{ silent: true });
           if ( api_port == "" ){
              var ui_port = 16126;
           } else {
@@ -906,25 +907,25 @@ function error(args) {
 }
 async function auto_update() {
   const watchdogPath = process.env.FLUX_WATCHDOG_PATH || '/home/$USER/watchdog';
-  const fluxOsRootDir = process.env.FLUXOS_PATH;
 
-  const fluxOsStopCmd = fluxOsRootDir
+  const fluxOsStopCmd = isArcane
     ? "systemctl stop fluxos.service"
     : "pm2 stop flux";
 
-  const fluxOsStartCmd = fluxOsRootDir
+  const fluxOsStartCmd = isArcane
     ? "systemctl start fluxos.service"
     : "pm2 start flux";
 
-  const fluxOsInstallCmd = fluxOsRootDir
+  const fluxOsInstallCmd = isArcane
+    // just use a dummy command here for non arcane
     ? `cd ${fluxOsRootDir} && npm install --omit=dev --cache /dat/usr/lib/npm`
     : ":";
 
-  const fluxOsPkgFile = fluxOsRootDir
+  const fluxOsPkgFile = isArcane
     ? path.join(fluxOsRootDir, "package.json")
     : "/home/$USER/zelflux/package.json";
 
-  const fluxdServiceName = fluxOsRootDir
+  const fluxdServiceName = isArcane
     ? "fluxd.service"
     : "zelcash.service"
 
@@ -1138,7 +1139,7 @@ async function flux_check() {
     : "pm2 restart flux";
 
   const fluxbenchLogPath = isArcane
-    ? path.join(process.env.FLUXBENCH_PATH, 'debug.log')
+    ? path.join(fluxbenchPath, 'debug.log')
     : '/home/$USER/.fluxbenchmark/debug.log';
 
   delete require.cache[require.resolve('./config.js')];
