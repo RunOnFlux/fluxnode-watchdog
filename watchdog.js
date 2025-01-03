@@ -13,6 +13,8 @@ console.log('Watchdog v6.3.1 Starting...');
 console.log('=================================================================');
 
 const configPath = 'config.js';
+const isArcane = Boolean(process.env.FLUXOS_PATH);
+
 var sync_lock = 0;
 var tire_lock=0;
 var lock_zelback=0;
@@ -575,7 +577,7 @@ async function Check_Sync(height,time) {
 
          shell.exec(`sudo systemctl stop ${fluxdServiceName}`,{ silent: true });
          sleep.sleep(2);
-        //  shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
+         if (!isArcane) shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
          shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true });
          console.log(time+' => Flux daemon restarting...');
          await discord_hook("Flux daemon restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
@@ -1022,12 +1024,13 @@ async function auto_update() {
 
       }
       var zelcash_dpkg_version_before = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
-      shell.exec(`sudo systemctl stop ${fluxdServiceName}`,{ silent: true })
-      shell.exec("sudo apt-get update",{ silent: true })
-      shell.exec("sudo apt-get install flux -y",{ silent: true })
+      shell.exec(`sudo systemctl stop ${fluxdServiceName}`,{ silent: true });
+      if (!isArcane) shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
+      shell.exec("sudo apt-get update",{ silent: true });
+      shell.exec("sudo apt-get install flux -y",{ silent: true });
       var zelcash_dpkg_version_after = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
       sleep.sleep(2);
-      shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true })
+      shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true });
       if ( (zelcash_dpkg_version_before !== zelcash_dpkg_version_after) && zelcash_dpkg_version_after != "" ){
         await discord_hook(`Fluxnode daemon updated!\nVersion: **${zelcash_dpkg_version_after}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
         // Update notification daemon
@@ -1080,13 +1083,14 @@ if (config.zelbench_update == "1") {
    var zelbench_dpkg_version_before = shell.exec(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`,{ silent: true }).stdout;
    // For Arcane, we have to stop this as fluxd requires fluxbenchd, as it will
    // start it if it's not present. (We need to remove this from fluxd source code)
-   shell.exec(`sudo systemctl stop ${fluxdServiceName}`,{ silent: true })
-   if (fluxOsRootDir) shell.exec("sudo systemctl stop fluxbenchd.service")
-   shell.exec("sudo apt-get update",{ silent: true })
-   shell.exec("sudo apt-get install fluxbench -y",{ silent: true })
+   shell.exec(`sudo systemctl stop ${fluxdServiceName}`,{ silent: true });
+   if (isArcane) shell.exec("sudo systemctl stop fluxbenchd.service");
+   if (!isArcane) shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
+   shell.exec("sudo apt-get update",{ silent: true });
+   shell.exec("sudo apt-get install fluxbench -y",{ silent: true });
    sleep.sleep(2);
-   if (fluxOsRootDir) shell.exec("sudo systemctl start fluxbenchd.service")
-   shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true })
+   if (isArcane) shell.exec("sudo systemctl start fluxbenchd.service");
+   shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true });
 
    var zelbench_dpkg_version_after = shell.exec(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`,{ silent: true }).stdout;
 
@@ -1119,8 +1123,6 @@ console.log('=================================================================')
 
 }
 async function flux_check() {
-  const isArcane = Boolean(process.env.FLUXOS_PATH);
-  
   const fluxdServiceName = isArcane
   ? "fluxd.service"
   : "zelcash.service";
