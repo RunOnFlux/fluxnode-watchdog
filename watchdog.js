@@ -6,7 +6,6 @@ const fs = require('fs');
 const https = require('https');
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
-
 const path = require('node:path');
 
 sleep.sleep(15);
@@ -607,8 +606,8 @@ if (fs.existsSync(configPath)) {
   let daemon_cli='zelcash-cli';
 
   if (fs.existsSync(`/usr/local/bin/flux-cli`)) {
-     daemon_cli = process.env.FLUXOS_PATH
-       ? `flux-cli -conf=${process.env.FLUXD_CONFIG_PATH}`
+     daemon_cli = fluxdConfigPath
+       ? `flux-cli -conf=${fluxdConfigPath}`
        : "flux-cli";
   }
 
@@ -627,7 +626,7 @@ if (fs.existsSync(configPath)) {
   if (fs.existsSync(daemonConfigPath)) {
     var tx_hash = shell.exec(`grep -w zelnodeoutpoint "${daemonConfigPath}" | sed -e 's/zelnodeoutpoint=//'`,{ silent: true }).stdout;
     var exec_comment = `${daemon_cli} decoderawtransaction $(${daemon_cli} getrawtransaction ${tx_hash} ) | jq '.vout[].value' | egrep '1000|12500|40000'`
-    var type = shell.exec(`${exec_comment}`,{ silent: true }).stdout;
+    var type = shell.exec(exec_comment,{ silent: true }).stdout;
     switch(Number(type.trim())){
       case 1000:
       var  tire_name="CUMULUS";
