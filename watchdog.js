@@ -603,15 +603,13 @@ if (fs.existsSync(configPath)) {
   const fluxdConfigPath = process.env.FLUXD_CONFIG_PATH;
 
   const home_dir = shell.exec("echo $HOME",{ silent: true }).stdout;
-  const daemonConfigPath = `${home_dir.trim()}/.zelcash/zelcash.conf`;
+  let daemonConfigPath = `${home_dir.trim()}/.zelcash/zelcash.conf`;
   let daemon_cli='zelcash-cli';
-  let daemon_package_name='zelcash';
 
   if (fs.existsSync(`/usr/local/bin/flux-cli`)) {
      daemon_cli = process.env.FLUXOS_PATH
        ? `flux-cli -conf=${process.env.FLUXD_CONFIG_PATH}`
        : "flux-cli";
-     daemon_package_name='flux';
   }
 
   if (!fs.existsSync(daemonConfigPath)) {
@@ -719,13 +717,11 @@ else {
   let daemonConfigPath = `${home_dir.trim()}/.zelcash/zelcash.conf`;
   var daemon_cli='zelcash-cli';
   var bench_cli='zelbench-cli';
-  var daemon_package_name='zelcash';
 
   if (fs.existsSync(`/usr/local/bin/flux-cli`)) {
     daemon_cli = process.env.FLUXOS_PATH
     ? `flux-cli -conf=${process.env.FLUXD_CONFIG_PATH}`
     : "flux-cli";
-     daemon_package_name='flux';
   }
 
   if (!fs.existsSync(daemonConfigPath)) {
