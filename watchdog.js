@@ -625,7 +625,7 @@ if (fs.existsSync(configPath)) {
 
 
   if (fs.existsSync(daemonConfigPath)) {
-    var tx_hash = shell.exec("grep -w zelnodeoutpoint "+daemonConfigPath+" | sed -e 's/zelnodeoutpoint=//'",{ silent: true }).stdout;
+    var tx_hash = shell.exec(`grep -w zelnodeoutpoint "+${daemonConfigPath}+" | sed -e 's/zelnodeoutpoint=//'`,{ silent: true }).stdout;
     var exec_comment = `${daemon_cli} decoderawtransaction $(${daemon_cli} getrawtransaction ${tx_hash} ) | jq '.vout[].value' | egrep '1000|12500|40000'`
     var type = shell.exec(`${exec_comment}`,{ silent: true }).stdout;
     switch(Number(type.trim())){
@@ -736,7 +736,7 @@ else {
   }
 
   if (fs.existsSync(daemonConfigPath)) {
-   var tx_hash = shell.exec("grep -w zelnodeoutpoint "+daemonConfigPath+" | sed -e 's/zelnodeoutpoint=//'",{ silent: true }).stdout;
+   var tx_hash = shell.exec(`grep -w zelnodeoutpoint "+${daemonConfigPath}+" | sed -e 's/zelnodeoutpoint=//'`,{ silent: true }).stdout;
    var exec_comment = `${daemon_cli} decoderawtransaction $(${daemon_cli} getrawtransaction ${tx_hash} ) | jq '.vout[].value' | egrep '1000|12500|40000'`
    var type = shell.exec(`${exec_comment}`,{ silent: true }).stdout;
 
