@@ -923,7 +923,7 @@ async function auto_update() {
 
   delete require.cache[require.resolve('./config.js')];
   var config = require('./config.js');
-  var remote_version = shell.exec("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/fluxnode-watchdog/feature/fluxos_image/package.json | jq -r '.version'",{ silent: true }).stdout;
+  var remote_version = shell.exec("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/fluxnode-watchdog/master/package.json | jq -r '.version'",{ silent: true }).stdout;
   var local_version = shell.exec("jq -r '.version' package.json",{ silent: true }).stdout;
   console.log(' UPDATE CHECKING....');
   console.log('=================================================================');
