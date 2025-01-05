@@ -6,12 +6,25 @@ const fs = require('fs');
 const https = require('https');
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
+const path = require('node:path');
 
 sleep.sleep(15);
-console.log('Watchdog v6.3.0 Starting...');
+console.log('Watchdog v6.3.1 Starting...');
 console.log('=================================================================');
 
-const path = 'config.js';
+const configPath = 'config.js';
+
+const isArcane = Boolean(process.env.FLUXOS_PATH);
+const fluxdConfigPath = process.env.FLUXD_CONFIG_PATH;
+const fluxOsRootDir = process.env.FLUXOS_PATH;
+const fluxbenchPath = process.env.FLUXBENCH_PATH;
+
+const fluxOsConfigPath = isArcane
+  ? path.join(fluxOsRootDir, "config/userconfig.js")
+  : "/home/$USER/zelflux/config/userconfig.js";
+
+const fluxdServiceName = isArcane ? "fluxd.service" : "zelcash.service";
+
 var sync_lock = 0;
 var tire_lock=0;
 var lock_zelback=0;
@@ -417,12 +430,12 @@ async function Myip(){
 return MyIP;
 }
 async function discord_hook(node_msg,web_hook_url,ping,title,color,field_name,thumbnail_png,label) {
-
   if ( typeof web_hook_url !== "undefined" && web_hook_url !== "0" ) {
 
       if ( typeof ping == "undefined" || ping == "0") {
+
           var node_ip = await Myip();
-          var api_port = await shell.exec("grep -w apiport /home/$USER/zelflux/config/userconfig.js | grep -o '[[:digit:]]*'",{ silent: true });
+          var api_port = shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`,{ silent: true });
           if ( api_port == "" ){
              var ui_port = 16126;
           } else {
@@ -457,7 +470,7 @@ async function discord_hook(node_msg,web_hook_url,ping,title,color,field_name,th
 
       } else {
           var node_ip = await Myip();
-          var api_port = await shell.exec("grep -w apiport /home/$USER/zelflux/config/userconfig.js | grep -o '[[:digit:]]*'",{ silent: true });
+          var api_port = shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`,{ silent: true });
           if ( api_port == "" ){
              var ui_port = 16126;
           } else {
@@ -501,7 +514,6 @@ function max() {
     }));
 }
 async function Check_Sync(height,time) {
-
   // var exec_comment1=`curl -sk -m 8 https://explorer.flux.zelcore.io/api/status?q=getInfo | jq '.info.blocks'`
   var exec_comment2=`curl -sk -m 8 https://explorer.runonflux.io/api/status?q=getInfo | jq '.info.blocks'`
   var exec_comment3=`curl -sk -m 8 https://explorer.zelcash.online/api/status?q=getInfo | jq '.info.blocks'`
@@ -565,10 +577,10 @@ async function Check_Sync(height,time) {
        if ( typeof action  == "undefined" || action == "1" ){
 
 
-         shell.exec("sudo systemctl stop zelcash",{ silent: true });
+         shell.exec(`sudo systemctl stop ${fluxdServiceName}`,{ silent: true });
          sleep.sleep(2);
-         shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
-         shell.exec("sudo systemctl start zelcash",{ silent: true });
+         if (!isArcane) shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
+         shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true });
          console.log(time+' => Flux daemon restarting...');
          await discord_hook("Flux daemon restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
@@ -587,36 +599,36 @@ async function Check_Sync(height,time) {
 
   }
 }
-if (fs.existsSync(path)) {
 
-  var  home_dir = shell.exec("echo $HOME",{ silent: true }).stdout;
-  var  zelcash_path = `${home_dir.trim()}/.zelcash/zelcash.conf`;
+// this appears to be the main entrypoint
+
+if (fs.existsSync(configPath)) {
+  var home_dir = shell.exec("echo $HOME",{ silent: true }).stdout;
+  var daemonConfigPath = `${home_dir.trim()}/.zelcash/zelcash.conf`;
   var daemon_cli='zelcash-cli';
-  var daemon_package_name='zelcash';
 
   if (fs.existsSync(`/usr/local/bin/flux-cli`)) {
-     daemon_cli='flux-cli';
-     daemon_package_name='flux';
+     daemon_cli = isArcane
+       ? `flux-cli -conf=${fluxdConfigPath}`
+       : "flux-cli";
   }
 
-  if (!fs.existsSync(zelcash_path)) {
-     zelcash_path = `${home_dir.trim()}/.flux/flux.conf`;
+  if (!fs.existsSync(daemonConfigPath)) {
+    daemonConfigPath = fluxdConfigPath || `${home_dir.trim()}/.flux/flux.conf`;
    }
 
 
   if (fs.existsSync(`/usr/local/bin/fluxbenchd`)) {
      bench_cli='fluxbench-cli';
-     bench_package_name='fluxbench';
    } else {
      bench_cli='zelbench-cli';
-     bench_package_name='zelbench';
    }
 
 
-  if (fs.existsSync(zelcash_path)) {
-    var tx_hash = shell.exec("grep -w zelnodeoutpoint "+zelcash_path+" | sed -e 's/zelnodeoutpoint=//'",{ silent: true }).stdout;
+  if (fs.existsSync(daemonConfigPath)) {
+    var tx_hash = shell.exec(`grep -w zelnodeoutpoint "${daemonConfigPath}" | sed -e 's/zelnodeoutpoint=//'`,{ silent: true }).stdout;
     var exec_comment = `${daemon_cli} decoderawtransaction $(${daemon_cli} getrawtransaction ${tx_hash} ) | jq '.vout[].value' | egrep '1000|12500|40000'`
-    var type = shell.exec(`${exec_comment}`,{ silent: true }).stdout;
+    var type = shell.exec(exec_comment,{ silent: true }).stdout;
     switch(Number(type.trim())){
       case 1000:
       var  tire_name="CUMULUS";
@@ -701,33 +713,30 @@ console.log('=> FluxOS:  disabled');
 console.log('=================================================================');
 } 
 else {
-
-  var  home_dir = shell.exec("echo $HOME",{ silent: true }).stdout;
-  var  zelcash_path = `${home_dir.trim()}/.zelcash/zelcash.conf`;
+  const home_dir = shell.exec("echo $HOME",{ silent: true }).stdout;
+  let daemonConfigPath = `${home_dir.trim()}/.zelcash/zelcash.conf`;
   var daemon_cli='zelcash-cli';
-  var daemon_package_name='zelcash';
+  var bench_cli='zelbench-cli';
 
   if (fs.existsSync(`/usr/local/bin/flux-cli`)) {
-     daemon_cli='flux-cli';
-     daemon_package_name='flux';
+    daemon_cli = isArcane
+    ? `flux-cli -conf=${fluxdConfigPath}`
+    : "flux-cli";
   }
 
-  if (!fs.existsSync(zelcash_path)) {
-     zelcash_path = `${home_dir.trim()}/.flux/flux.conf`;
+  if (!fs.existsSync(daemonConfigPath)) {
+    daemonConfigPath = isArcane
+       ? fluxdConfigPath
+       : `${home_dir.trim()}/.flux/flux.conf`;
    }
 
 
   if (fs.existsSync(`/usr/local/bin/fluxbenchd`)) {
      bench_cli='fluxbench-cli';
-     bench_package_name='fluxbench';
-   } else {
-     bench_cli='zelbench-cli';
-     bench_package_name='zelbench';
-   }
+  }
 
-
-  if (fs.existsSync(zelcash_path)) {
-   var tx_hash = shell.exec("grep -w zelnodeoutpoint "+zelcash_path+" | sed -e 's/zelnodeoutpoint=//'",{ silent: true }).stdout;
+  if (fs.existsSync(daemonConfigPath)) {
+   var tx_hash = shell.exec(`grep -w zelnodeoutpoint "${daemonConfigPath}" | sed -e 's/zelnodeoutpoint=//'`,{ silent: true }).stdout;
    var exec_comment = `${daemon_cli} decoderawtransaction $(${daemon_cli} getrawtransaction ${tx_hash} ) | jq '.vout[].value' | egrep '1000|12500|40000'`
    var type = shell.exec(`${exec_comment}`,{ silent: true }).stdout;
 
@@ -775,7 +784,7 @@ const dataToWrite = `module.exports = {
 console.log('Creating config file...');
 console.log("========================");
 
-const userconfig = fs.createWriteStream(path);
+const userconfig = fs.createWriteStream(configPath);
   userconfig.once('open', () => {
   userconfig.write(dataToWrite);
   userconfig.end();
@@ -840,13 +849,12 @@ console.log('=================================================================')
 
 }
 async function send_telegram_msg(emoji_title,info_type,field_type,msg_text,label) {
-
   var telegram_alert = config.telegram_alert;
 
   if  ( typeof telegram_alert !== "undefined" && telegram_alert == 1 ) {
 
     const node_ip = await Myip();
-    var api_port = await shell.exec("grep -w apiport /home/$USER/zelflux/config/userconfig.js | grep -o '[[:digit:]]*'",{ silent: true });
+    var api_port = shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`,{ silent: true });
           if ( api_port == "" ){
              var ui_port = 16126;
           } else {
@@ -894,6 +902,25 @@ function error(args) {
   }
 }
 async function auto_update() {
+  const watchdogPath = process.env.FLUX_WATCHDOG_PATH || '/home/$USER/watchdog';
+
+  const fluxOsStopCmd = isArcane
+    ? "systemctl stop fluxos.service"
+    : "pm2 stop flux";
+
+  const fluxOsStartCmd = isArcane
+    ? "systemctl start fluxos.service"
+    : "pm2 start flux";
+
+  const fluxOsInstallCmd = isArcane
+    // just use a dummy command here for non arcane
+    ? `cd ${fluxOsRootDir} && npm install --omit=dev --cache /dat/usr/lib/npm`
+    : ":";
+
+  const fluxOsPkgFile = isArcane
+    ? path.join(fluxOsRootDir, "package.json")
+    : "/home/$USER/zelflux/package.json";
+
   delete require.cache[require.resolve('./config.js')];
   var config = require('./config.js');
   var remote_version = shell.exec("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/fluxnode-watchdog/master/package.json | jq -r '.version'",{ silent: true }).stdout;
@@ -908,7 +935,7 @@ async function auto_update() {
       console.log('Local version: '+local_version.trim());
       console.log('Remote version: '+remote_version.trim());
       console.log('=================================================================');
-      shell.exec("cd /home/$USER/watchdog && git checkout . && git fetch && git pull -p",{ silent: true }).stdout;
+      shell.exec(`cd ${watchdogPath} && git checkout . && git fetch && git pull -p`,{ silent: true }).stdout;
       var local_ver = shell.exec("jq -r '.version' package.json",{ silent: true }).stdout;
       if ( local_ver.trim() == remote_version.trim() ){
         await discord_hook(`Fluxnode Watchdog updated!\nVersion: **${remote_version}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
@@ -930,7 +957,7 @@ async function auto_update() {
   if (config.zelflux_update == "1") {
 
    var zelflux_remote_version = shell.exec("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json | jq -r '.version'",{ silent: true }).stdout;
-   var zelflux_local_version = shell.exec("jq -r '.version' /home/$USER/zelflux/package.json",{ silent: true }).stdout;
+   var zelflux_local_version = shell.exec(`jq -r '.version' ${fluxOsPkgFile}`,{ silent: true }).stdout;
 
    console.log(`FluxOS current: ${zelflux_remote_version.trim()} installed: ${zelflux_local_version.trim()}`);
    if ( zelflux_remote_version.trim() != "" && zelflux_local_version.trim() != "" ){
@@ -942,13 +969,15 @@ async function auto_update() {
        console.log('Local version: '+zelflux_local_version.trim());
        console.log('Remote version: '+zelflux_remote_version.trim());
        console.log('=================================================================');
-       shell.exec("pm2 stop flux",{ silent: true }).stdout;
+       shell.exec(fluxOsStopCmd,{ silent: true }).stdout;
        sleep.sleep(5);
-       shell.exec("cd /home/$USER/zelflux && git checkout . && git fetch && git pull -p",{ silent: true }).stdout;
+       shell.exec(`cd ${fluxOsRootDir} && git checkout . && git fetch && git pull -p`,{ silent: true }).stdout;
        sleep.sleep(5);
-       shell.exec("pm2 start flux",{ silent: true }).stdout;
+       shell.exec(fluxOsInstallCmd,{ silent: true }).stdout;
+       if (isArcane) sleep.sleep(5);
+       shell.exec(fluxOsStartCmd,{ silent: true }).stdout;
        sleep.sleep(20);
-       var zelflux_lv = shell.exec("jq -r '.version' /home/$USER/zelflux/package.json",{ silent: true }).stdout;
+       var zelflux_lv = shell.exec(`jq -r '.version' ${fluxOsPkgFile}`,{ silent: true }).stdout;
        if ( zelflux_remote_version.trim() == zelflux_lv.trim() ) {
 
          await discord_hook(`FluxOS updated!\nVersion: **${zelflux_remote_version}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
@@ -988,13 +1017,13 @@ async function auto_update() {
 
       }
       var zelcash_dpkg_version_before = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
-      shell.exec("sudo systemctl stop zelcash",{ silent: true })
-      shell.exec("sudo fuser -k 16125/tcp",{ silent: true })
-      shell.exec("sudo apt-get update",{ silent: true })
-      shell.exec("sudo apt-get install flux -y",{ silent: true })
+      shell.exec(`sudo systemctl stop ${fluxdServiceName}`,{ silent: true });
+      if (!isArcane) shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
+      shell.exec("sudo apt-get update",{ silent: true });
+      shell.exec("sudo apt-get install flux -y",{ silent: true });
       var zelcash_dpkg_version_after = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
       sleep.sleep(2);
-      shell.exec("sudo systemctl start zelcash",{ silent: true })
+      shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true });
       if ( (zelcash_dpkg_version_before !== zelcash_dpkg_version_after) && zelcash_dpkg_version_after != "" ){
         await discord_hook(`Fluxnode daemon updated!\nVersion: **${zelcash_dpkg_version_after}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
         // Update notification daemon
@@ -1045,12 +1074,16 @@ if (config.zelbench_update == "1") {
 
 
    var zelbench_dpkg_version_before = shell.exec(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`,{ silent: true }).stdout;
-   shell.exec("sudo systemctl stop zelcash",{ silent: true })
-   shell.exec("sudo fuser -k 16125/tcp",{ silent: true })
-   shell.exec("sudo apt-get update",{ silent: true })
-   shell.exec("sudo apt-get install fluxbench -y",{ silent: true })
+   // For Arcane, we have to stop this as fluxd requires fluxbenchd, as it will
+   // start it if it's not present. (We need to remove this from fluxd source code)
+   shell.exec(`sudo systemctl stop ${fluxdServiceName}`,{ silent: true });
+   if (isArcane) shell.exec("sudo systemctl stop fluxbenchd.service");
+   if (!isArcane) shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
+   shell.exec("sudo apt-get update",{ silent: true });
+   shell.exec("sudo apt-get install fluxbench -y",{ silent: true });
    sleep.sleep(2);
-   shell.exec("sudo systemctl start zelcash",{ silent: true })
+   if (isArcane) shell.exec("sudo systemctl start fluxbenchd.service");
+   shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true });
 
    var zelbench_dpkg_version_after = shell.exec(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`,{ silent: true }).stdout;
 
@@ -1083,6 +1116,17 @@ console.log('=================================================================')
 
 }
 async function flux_check() {
+  const fluxbenchServiceName = isArcane
+  ? "fluxbenchd.service"
+  : "zelcash.service";
+  
+  const fluxOsRestartCmd = isArcane
+    ? "sudo systemctl restart fluxos.service"
+    : "pm2 restart flux";
+
+  const fluxbenchLogPath = isArcane
+    ? path.join(fluxbenchPath, 'debug.log')
+    : '/home/$USER/.fluxbenchmark/debug.log';
 
   delete require.cache[require.resolve('./config.js')];
   var config=require('./config.js');
@@ -1091,7 +1135,7 @@ async function flux_check() {
   ping=config.ping;
   label=config.label; 
 
-  const service_inactive = shell.exec("systemctl list-units --full -all | grep 'zelcash' | grep -o 'inactive'",{ silent: true }).stdout;
+  const service_inactive = shell.exec(`systemctl list-units --full -all | grep ${fluxdServiceName} | grep -o inactive`,{ silent: true }).stdout;
   const data_time_utc = moment.utc().format('YYYY-MM-DD HH:mm:ss');
   const stillUtc = moment.utc(data_time_utc).toDate();
   const local = moment(stillUtc).local().format('YYYY-MM-DD HH:mm:ss');
@@ -1114,8 +1158,8 @@ if ( service_inactive.trim() == "inactive" ) {
   ++inactive_counter;
   console.log('============================================================['+inactive_counter+']');
   if ( inactive_counter > 6 ) {
-    shell.exec("sudo fuser -k 16125/tcp",{ silent: true })
-    shell.exec("sudo systemctl start zelcash",{ silent: true })
+    if (!isArcane) shell.exec("sudo fuser -k 16125/tcp",{ silent: true }) 
+    shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true })
     inactive_counter=0;
    } else {
    return;
@@ -1249,11 +1293,11 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_check !== "undefine
    }
 
    if ( typeof action  == "undefined" || action == "1" ){
-      shell.exec("sudo systemctl stop zelcash",{ silent: true });
+      shell.exec(`sudo systemctl stop ${fluxbenchServiceName}`,{ silent: true });
       sleep.sleep(2);
-      shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
-      shell.exec("sudo systemctl start zelcash",{ silent: true });
-      console.log(data_time_utc+' => Flux daemon restarting...');
+      if (!isArcane) shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
+      shell.exec(`sudo systemctl start ${fluxbenchServiceName}`,{ silent: true });
+      console.log(data_time_utc+' => Flux benchmark restarting...');
       await discord_hook("Flux benchmark restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
       // Fix action daemon restarted notification telegram
@@ -1323,7 +1367,7 @@ if (zelback_status == "" || typeof zelback_status == "undefined"){
     console.log('FluxOS status = '+zelback_status);
     if ( lock_zelback != "1" && disc_count == 2) {
     error('FluxOS disconnected!');
-    var flux_api_port = await shell.exec("grep -w apiport /home/$USER/zelflux/config/userconfig.js | grep -o '[[:digit:]]*'",{ silent: true });
+    var flux_api_port = shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`,{ silent: true });
     var port_api = Number(flux_api_port.trim());
     var error_output=shell.exec(`curl -sSL -m 10 http://localhost:${port_api}/id/loginphrase`,{ silent: true }).stdout;
     error(`Error: ${error_output}`);
@@ -1345,8 +1389,8 @@ if (zelback_status == "" || typeof zelback_status == "undefined"){
      if ( typeof action  == "undefined" || action == "1" ){
 
        if ( disc_count == 2 ){
-        shell.exec("pm2 restart flux",{ silent: true });
-        shell.exec("sudo systemctl restart zelcash",{ silent: true });
+        shell.exec(fluxOsRestartCmd,{ silent: true });
+        shell.exec(`sudo systemctl restart ${fluxdServiceName}`,{ silent: true });
         sleep.sleep(2);
         console.log(data_time_utc+' => FluxOS restarting...');
         await discord_hook("FluxOS restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
@@ -1490,10 +1534,10 @@ else {
    }
 
    if ( typeof action  == "undefined" || action == "1" ){
-      shell.exec("sudo systemctl stop zelcash",{ silent: true });
+      shell.exec(`sudo systemctl stop ${fluxdServiceName}`,{ silent: true });
       sleep.sleep(2);
-      shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
-      shell.exec("sudo systemctl start zelcash",{ silent: true });
+      if (!isArcane) shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
+      shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true });
       console.log(data_time_utc+' => Flux daemon restarting...');
       await discord_hook("Flux daemon restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
@@ -1574,7 +1618,7 @@ return;
 
 if ( zelbench_benchmark_status == "toaster" || zelbench_benchmark_status == "failed" ){
   ++zelbench_counter;
-  var error_line=shell.exec("egrep -a --color 'Failed' /home/$USER/.fluxbenchmark/debug.log | tail -1 | sed 's/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.//'",{ silent: true });
+  var error_line=shell.exec(`egrep -a --color 'Failed' ${fluxbenchLogPath} | tail -1 | sed 's/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.//'`,{ silent: true });
   error('Benchmark problem detected! Fluxbench status: '+zelbench_benchmark_status);
   error('Reason: '+error_line.trim());
   console.log('Benchmark problem detected! Fluxbench status: '+zelbench_benchmark_status);
