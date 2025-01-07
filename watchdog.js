@@ -9,7 +9,7 @@ const axios = require('axios');
 const path = require('node:path');
 
 sleep.sleep(15);
-console.log('Watchdog v6.3.1 Starting...');
+console.log('Watchdog v6.3.2 Starting...');
 console.log('=================================================================');
 
 const configPath = 'config.js';
