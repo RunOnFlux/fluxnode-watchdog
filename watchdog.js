@@ -9,20 +9,16 @@ const axios = require('axios');
 const path = require('node:path');
 
 sleep.sleep(15);
-console.log('Watchdog v6.3.1 Starting...');
+console.log('Watchdog v6.3.2 Starting...');
 console.log('=================================================================');
 
 const configPath = 'config.js';
 
 const isArcane = Boolean(process.env.FLUXOS_PATH);
 const fluxdConfigPath = process.env.FLUXD_CONFIG_PATH;
-const fluxOsRootDir = process.env.FLUXOS_PATH;
 const fluxbenchPath = process.env.FLUXBENCH_PATH;
-
-const fluxOsConfigPath = isArcane
-  ? path.join(fluxOsRootDir, "config/userconfig.js")
-  : "/home/$USER/zelflux/config/userconfig.js";
-
+const fluxOsRootDir = process.env.FLUXOS_PATH || "/home/$USER/zelflux";
+const fluxOsConfigPath = path.join(fluxOsRootDir, "config/userconfig.js")
 const fluxdServiceName = isArcane ? "fluxd.service" : "zelcash.service";
 
 var sync_lock = 0;
@@ -917,9 +913,7 @@ async function auto_update() {
     ? `cd ${fluxOsRootDir} && npm install --omit=dev --cache /dat/usr/lib/npm`
     : ":";
 
-  const fluxOsPkgFile = isArcane
-    ? path.join(fluxOsRootDir, "package.json")
-    : "/home/$USER/zelflux/package.json";
+  const fluxOsPkgFile = path.join(fluxOsRootDir, "package.json");
 
   delete require.cache[require.resolve('./config.js')];
   var config = require('./config.js');
