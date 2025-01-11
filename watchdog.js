@@ -1460,18 +1460,22 @@ async function arcane_update_detection() {
   }
 }
 
-fs.watch('/etc/environment', (eventType) => {
-  if (eventType === 'change') {
-    clearTimeout(debounceTimeout);
-    debounceTimeout = setTimeout(async () => {
-      console.log('/etc/environment file changed. Reloading environment variables...');
-      await arcane_update_detection();
-    }, 2000);
-  }
-});
+if (isArcane) {
+  fs.watch('/etc/environment', (eventType) => {
+    if (eventType === 'change') {
+      clearTimeout(debounceTimeout);
+      debounceTimeout = setTimeout(async () => {
+        console.log('/etc/environment file changed. Reloading environment variables...');
+        await arcane_update_detection();
+      }, 2000);
+    }
+  });
+}
+
+if (isArcane) {
+  (async () => {
+    await initializeHistoricValues();
+  })();
+}
 
 setInterval(job_creator, 1*60*1000);
-
-(async () => {
-  await initializeHistoricValues();
-})();
