@@ -4,7 +4,6 @@ const moment = require('moment');
 const webhook = require("@prince25/discord-webhook-sender")
 const fs = require('fs');
 const fsPromises = require('fs/promises');
-const https = require('https');
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const path = require('node:path');
