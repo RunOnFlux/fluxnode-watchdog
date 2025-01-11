@@ -3,13 +3,14 @@ const sleep = require('sleep');
 const moment = require('moment');
 const webhook = require("@prince25/discord-webhook-sender")
 const fs = require('fs');
+const fsPromises = require('fs/promises');
 const https = require('https');
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const path = require('node:path');
 
 sleep.sleep(15);
-console.log('Watchdog v6.3.2 Starting...');
+console.log('Watchdog v6.3.3 Starting...');
 console.log('=================================================================');
 
 const configPath = 'config.js';
@@ -20,6 +21,10 @@ const fluxbenchPath = process.env.FLUXBENCH_PATH;
 const fluxOsRootDir = process.env.FLUXOS_PATH || "/home/$USER/zelflux";
 const fluxOsConfigPath = path.join(fluxOsRootDir, "config/userconfig.js")
 const fluxdServiceName = isArcane ? "fluxd.service" : "zelcash.service";
+
+let arcaneVersionHistory = '';
+let arcaneVersionHumanHistory = '';
+let debounceTimeout;
 
 var sync_lock = 0;
 var tire_lock=0;
@@ -35,19 +40,10 @@ var watchdog_sleep="N/A";
 var disc_count = 0;
 var h_IP=0;
 var component_update=0;
-var kda_sync = -1;
-var historic_height = 0;
-var kda_lock=0;
-var no_sync = 0;
-var not_responding = 0;
 var job_count=0;
-var reset_height=0;
-var fix_tiggered=0;
-var kda_sleep=0;
-var after_fix=0;
 var sleep_msg=0;
 
-function between(min, max) {  
+function between(min, max) {
   return Math.floor(
     Math.random() * (max - min) + min
   )
@@ -64,9 +60,6 @@ async function job_creator(){
   if ( job_count % 4   === 0 ) {
     await flux_check();
   }
-  if ( job_count % 17 === 0 ) {
-    await kda_check();
-  }
   // reset job count
   if ( job_count % autoUpdate === 0 ) {
     job_count = 0;
@@ -74,333 +67,12 @@ async function job_creator(){
   }
 }
 
-/* Check if string is IP */
 function checkIfValidIP(str) {
   // Regular expression to check if string is a IP address
   const regexExp = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/gi;
   return regexExp.test(str);
 }
 
-async function getKadenaNodeHeight(ip) {
-  try {
-      const agent = new https.Agent({
-      rejectUnauthorized: false
-    });
-    const kadenaData = await axios.get(`https://${ip}:31350/chainweb/0.0/mainnet01/cut`, { httpsAgent: agent , timeout: 5000});
-    return kadenaData.data.height;
-  } catch (e) {
-    // console.log(`${e}`);
-    return -1;
-  }
-}
-
-async function getKadenaNetworkHeight() {
-
-  try {
-
-    const agent = new https.Agent({
-      rejectUnauthorized: false
-    });
-
-    var kadenaData1 = await axios.get(`https://us-e1.chainweb.com/chainweb/0.0/mainnet01/cut`, { httpsAgent: agent , timeout: 5000});
-    kadenaData1 = kadenaData1.data.height;
-   // console.log(`Connection 1 ${kadenaData1}`)
-
- } catch (e) {
-    var kadenaData1 = -1
-   // console.log(`Connection 1 ${e}`);
-  }
-
-  try {
-
-    const agent = new https.Agent({
-      rejectUnauthorized: false
-    });
-
-    var kadenaData2 = await axios.get(`https://us-w2.chainweb.com/chainweb/0.0/mainnet01/cut`, { httpsAgent: agent , timeout: 5000});
-kadenaData2 = kadenaData2.data.height;
-//console.log(`Connection 2 ${kadenaData2}`);
- } catch (e) {
-    var kadenaData2 = -1
-      // console.log(`Connection 2 ${e}`);
-  }
-
-try {
-    const agent = new https.Agent({
-      rejectUnauthorized: false
-    });
-var kadenaData3 = await axios.get(`https://fr1.chainweb.com/chainweb/0.0/mainnet01/cut`, { httpsAgent: agent , timeout: 5000});
-kadenaData3 = kadenaData3.data.height;
- } catch (e) {
-    var kadenaData3 = -1
-     //console.log(`Connection 3 ${e}`);
-  }
-
-//    console.log("Bootstrap node height: "+ kadenaData1 + " " +  kadenaData2 + " " + kadenaData3);
-    let kadenaData = max(Number(kadenaData1), Number(kadenaData2), Number(kadenaData3));
-    return kadenaData;
-
-}
-
-
-async function kda_check(){
-
-let kda_docker_check = await shell.exec(`docker ps --filter name=fluxkadenachainwebnode | wc -l`,{ silent: true }).stdout;
-
-if ( kda_docker_check != 2 ){
-console.log(`KDA docker apps not detected!`);
-console.log(`Check skipped...`);
-console.log('=================================================================');
-return;
-}
-
-  let ip = await Myip();
-  let height = await getKadenaNodeHeight(ip);
-
-  if ( historic_height != 0 ) {
-
-    if ( historic_height == height && kda_lock == 0 ) {
-
-       kda_sync = -1;
-       kda_lock=1;
-       console.log(`KDA sync problem detected! Height: ${height}`);
-       /*error('KDA node sync freez detected!');
-       await discord_hook("KDA node sync freez detected!",web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
-       // KDA error notification telegram
-       var emoji_title = '\u{1F6A8}';
-       var emoji_bell = '\u{1F514}';
-       var info_type = 'Alert '+emoji_bell;
-       var field_type = 'Error: ';
-       var msg_text = 'KDA node sync freez detected!';
-       await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
-
-       sleep.sleep(3);
-
-       if ( typeof action  == "undefined" || action == "1" ){
-
-         reset_height = height;
-         shell.exec(`docker restart fluxkadenachainwebnode`,{ silent: true }).stdout;
-         
-         let kda_date_docker_check = await shell.exec(`docker ps --filter name=fluxKadenaChainWebData | wc -l`,{ silent: true }).stdout;
-
-         if ( kda_date_docker_check == 2 ){
-           setTimeout(() => {
-            shell.exec(`docker restart fluxKadenaChainWebData`,{ silent: true }).stdout;
-           }, 30 * 60 * 1000); // In case KadenaChainWebData is installed restart the app after 30m.
-         }
-         
-         /*await discord_hook("KDA node restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
-         // Fix action telegram
-         var emoji_title = '\u{26A1}';
-         var emoji_fix = '\u{1F528}';
-         var info_type = 'Fix Action '+emoji_fix;
-         var field_type = 'Info: ';
-         var msg_text = 'KDA node restarted!';
-         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
-         console.log(`Restarting container....`);
-
-       }
-       console.log('=================================================================');
-       return;
-
-    }
-
-  }
-
-  if ( height != -1 ){
-    historic_height = height;
-    console.log("KDA Node height: "+height);
-  }
-
- // if ( height  == -1 ) {
-    // console.log(`Info: KDA node height unavailable!`);
- // }
-
-  let network_height = await getKadenaNetworkHeight();
-  console.log("KDA Network height: "+network_height);
-
-  if ( network_height == -1 ) {
-    console.log(`Error: KDA network height unavailable! Check Skipped...`);
-    console.log('=================================================================');
-    return;
-  }
-
- let network_diff = Math.abs(network_height-height);
-
- if (  height == -1 && kda_sync != -1) {
-
-   let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' fluxkadenachainwebnode`,{ silent: true });
-
-
-   console.log(`KDA docker status: ${docker_status.trim()}`);
-   console.log(`Error: KDA node height unavailable!`);
-
-    if ( docker_status.indexOf("starting") == "-1" ) {
-     ++not_responding;
-    }
-
-    if ( not_responding == 2 ) {
-
-     kda_sync = -1;
-     /*error(`KDA node height unavailable! KDA node not working correct!`);
-     await discord_hook(`KDA node not working correct!\nDocker status: **${docker_status.trim()}**`,web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
-     // KDA error notification telegram
-     var emoji_title = '\u{1F6A8}';
-     var emoji_bell = '\u{1F514}';
-     var info_type = 'Alert '+emoji_bell;
-     var field_type = 'Error: ';
-     var msg_text = "KDA node not working correct! \nDocker status: <b>"+docker_status.trim()+"</b>";
-     await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
-
-     if ( typeof action  == "undefined" || action == "1" ){
-        fix_tiggered=1;
-        shell.exec(`docker restart fluxkadenachainwebnode`,{ silent: true }).stdout;
-       
-        let kda_date_docker_check = await shell.exec(`docker ps --filter name=fluxKadenaChainWebData | wc -l`,{ silent: true }).stdout;
-       
-        if ( kda_date_docker_check == 2 ){
-          setTimeout(() => {
-            shell.exec(`docker restart fluxKadenaChainWebData`,{ silent: true }).stdout;
-          }, 30 * 60 * 1000); // In case KadenaChainWebData is installed restart the app after 30m.
-        }
-       
-        /*await discord_hook("KDA node restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
-        // Fix action telegram
-        var emoji_title = '\u{26A1}';
-        var emoji_fix = '\u{1F528}';
-        var info_type = 'Fix Action '+emoji_fix;
-        var field_type = 'Info: ';
-        var msg_text = 'KDA node restarted!';
-        await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
-        console.log(`Restarting container....`);
-     }
-
-     console.log('=================================================================');
-     return;
-
-    }
-
-} else {
-  
-   if (  height == -1 ) {
-     
-       ++after_fix;
-
-       if ( fix_tiggered == 1 && after_fix == 2) {
-
-          after_fix = 0;
-
-         if ( kda_sleep == 0 ) {
-
-           kda_sleep = 1;
-           /*await discord_hook("KDA Watchdog in sleep mode..\nManual operation needed!",web_hook_url,ping,'Alert','#EA1414','Info','watchdog_manual1.png',label);
-           // KDA Watchdog in sleep mode notification telegram
-           var emoji_title = '\u{1F6A8}';
-           var emoji_bell = '\u{1F514}';
-           var info_type = 'Alert '+emoji_bell;
-           var field_type = 'Info: ';
-           var msg_text = "<b>KDA Watchdog in sleep mode!</b> \n\u{203C} <b>Manual operation needed</b> \u{203C}";
-           await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
-
-         }
-      }
-
-       let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' fluxkadenachainwebnode`,{ silent: true });
-       console.log(`Error: KDA node not working correct!`);
-       console.log(`KDA docker status: ${docker_status.trim()}`);
-       console.log('=================================================================');
-       return;
-     
-   }
-  
-}
-
-if ( height != -1 ){
-
-  not_responding = 0;
-  kda_sleep = 0;
-  after_fix=0;
-
-  if ( fix_tiggered == 1 ) {
-
-   fix_tiggered=0;
-
-   if ( typeof action  == "undefined" || action == "1" ){
-      /*await discord_hook("KDA node fixed! Apps responding...",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
-      // Daemon fixed notification telegram
-      var emoji_title = '\u{1F4A1}';
-      var emoji_fixed = '\u{2705}';
-      var info_type = 'Fixed Info '+emoji_fixed;
-      var field_type = 'Info: ';
-      var msg_text = "KDA node fixed!";
-      await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
-   }
-
- }
-
-}
-
-  if ( network_diff < 3000 ) {
-
-    if ( kda_lock == 1 && reset_height != height ){
-
-      if ( typeof action  == "undefined" || action == "1" ){
-        /*await discord_hook("KDA node sync fixed!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
-        // Daemon fixed notification telegram
-        var emoji_title = '\u{1F4A1}';
-        var emoji_fixed = '\u{2705}';
-        var info_type = 'Fixed Info '+emoji_fixed;
-        var field_type = 'Info: ';
-        var msg_text = 'KDA node sync fixed!';
-        await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
-      }
-
-    }
-
-     if ( reset_height != height  ){
-       kda_lock=0;
-     }
-
-    kda_sync = 1;
-    no_sync = 0;
-    console.log(`KDA node synced with network, diff: ${network_diff}`);
-
-  } else {
-
-    if ( kda_sync != -1 && height != -1 ) {
-
-       kda_sync = -1;
-
-       if ( no_sync == 0 ) {
-
-         no_sync = 1
-         console.log(`KDA node not synced with network, diff: ${network_diff}`);
-         /*error(`KDA node not synced with network, diff: ${network_diff}`);
-         await discord_hook(`KDA node not synced, diff:**${network_diff}**`,web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
-         // KDA error notification telegram
-         var emoji_title = '\u{1F6A8}';
-         var emoji_bell = '\u{1F514}';
-         var info_type = 'Alert '+emoji_bell;
-         var field_type = 'Error: ';
-         var msg_text = "KDA node not synced, diff: <b>"+network_diff+"</b>";
-         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);*/
-         sleep.sleep(3);
-
-       }
-
-     }
-
-  }
-
-  if ( kda_sync == -1 ) {
-    console.log(`Awaiting for full sync with KDA network...`);
-  }
-
-  let docker_status = await shell.exec(`docker inspect --format='{{.State.Health.Status}}' fluxkadenachainwebnode`,{ silent: true });
-  console.log(`KDA docker status: ${docker_status.trim()}`);
-  console.log('=================================================================');
-
-}
 async function Myip(){
   const check_list = ['ifconfig.me', 'api4.my-ip.io/ip', 'checkip.amazonaws.com' , 'api.ipify.org'];
   var MyIP = null;
@@ -425,6 +97,7 @@ async function Myip(){
 
 return MyIP;
 }
+
 async function discord_hook(node_msg,web_hook_url,ping,title,color,field_name,thumbnail_png,label) {
   if ( typeof web_hook_url !== "undefined" && web_hook_url !== "0" ) {
 
@@ -441,7 +114,7 @@ async function discord_hook(node_msg,web_hook_url,ping,title,color,field_name,th
           Hook.setUsername('Flux Watchdog');
 
          if (  typeof label == "undefined" ) {
-           
+
           const msg = new webhook.MessageBuilder()
           .setTitle(`:loudspeaker: **FluxNode ${title}**`)
           .addField('URL:', `http://${node_ip}:${ui_port}`)
@@ -449,9 +122,9 @@ async function discord_hook(node_msg,web_hook_url,ping,title,color,field_name,th
           .setColor(`${color}`)
           .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`);
           await Hook.send(msg);
-           
+
          } else {
-           
+
           const msg = new webhook.MessageBuilder()
           .setTitle(`:loudspeaker: **FluxNode ${title}**`)
           .addField('Name:', `${label}`)
@@ -460,7 +133,7 @@ async function discord_hook(node_msg,web_hook_url,ping,title,color,field_name,th
           .setColor(`${color}`)
           .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`);
           await Hook.send(msg);
-           
+
          }
 
 
@@ -485,7 +158,7 @@ async function discord_hook(node_msg,web_hook_url,ping,title,color,field_name,th
           .setText(`Ping: <@${ping}>`);
           await Hook.send(msg);
         } else {
-          
+
            const msg = new webhook.MessageBuilder()
           .setTitle(`:loudspeaker: **FluxNode ${title}**`)
           .addField('Name:', `${label}`)
@@ -495,20 +168,22 @@ async function discord_hook(node_msg,web_hook_url,ping,title,color,field_name,th
           .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`)
           .setText(`Ping: <@${ping}>`);
           await Hook.send(msg);
-          
+
         }
-        
+
       }
 
    }
 
 }
+
 function max() {
     var args = Array.prototype.slice.call(arguments);
     return Math.max.apply(Math, args.filter(function(val) {
        return !isNaN(val);
     }));
 }
+
 async function Check_Sync(height,time) {
   // var exec_comment1=`curl -sk -m 8 https://explorer.flux.zelcore.io/api/status?q=getInfo | jq '.info.blocks'`
   var exec_comment2=`curl -sk -m 8 https://explorer.runonflux.io/api/status?q=getInfo | jq '.info.blocks'`
@@ -523,7 +198,7 @@ async function Check_Sync(height,time) {
     console.log(`Info: Flux network height unavailable! Check Skipped...`);
     return;
   }
-  
+
   if ( height > explorer_block_height ) {
     console.log(`Info: Flux node height > network height! Check Skipped...`);
     return;
@@ -596,8 +271,6 @@ async function Check_Sync(height,time) {
   }
 }
 
-// this appears to be the main entrypoint
-
 if (fs.existsSync(configPath)) {
   var home_dir = shell.exec("echo $HOME",{ silent: true }).stdout;
   var daemonConfigPath = `${home_dir.trim()}/.zelcash/zelcash.conf`;
@@ -654,7 +327,7 @@ var web_hook_url=config.web_hook_url;
 var action=config.action;
 var ping=config.ping;
 var telegram_alert = config.telegram_alert;
-var label= config.label; 
+var label= config.label;
 
 console.log('Config file:');
 console.log(`Tier: ${tire_name}`);
@@ -707,7 +380,7 @@ console.log('=> FluxOS:  enabled');
 console.log('=> FluxOS:  disabled');
 }
 console.log('=================================================================');
-} 
+}
 else {
   const home_dir = shell.exec("echo $HOME",{ silent: true }).stdout;
   let daemonConfigPath = `${home_dir.trim()}/.zelcash/zelcash.conf`;
@@ -844,6 +517,7 @@ console.log('=> FluxOS:  disabled');
 console.log('=================================================================');
 
 }
+
 async function send_telegram_msg(emoji_title,info_type,field_type,msg_text,label) {
   var telegram_alert = config.telegram_alert;
 
@@ -863,12 +537,13 @@ async function send_telegram_msg(emoji_title,info_type,field_type,msg_text,label
     if (  typeof label == "undefined" ) {
       bot.sendMessage(chatId, emoji_title+"<b> FluxNode Watchdog </b>"+emoji_title+"\n----------------------------------------\n<b>Type: </b>"+info_type+"\n<b>URL:</b> http://"+node_ip+":"+ui_port+"\n<b>"+field_type+"</b>"+msg_text,{parse_mode: 'HTML'});
     } else {
-         bot.sendMessage(chatId, emoji_title+"<b> FluxNode Watchdog </b>"+emoji_title+"\n----------------------------------------\n<b>Type: </b>"+info_type+"\n<b>Name: </b>"+label+"\n<b>URL:</b> http://"+node_ip+":"+ui_port+"\n<b>"+field_type+"</b>"+msg_text,{parse_mode: 'HTML'});     
+         bot.sendMessage(chatId, emoji_title+"<b> FluxNode Watchdog </b>"+emoji_title+"\n----------------------------------------\n<b>Type: </b>"+info_type+"\n<b>Name: </b>"+label+"\n<b>URL:</b> http://"+node_ip+":"+ui_port+"\n<b>"+field_type+"</b>"+msg_text,{parse_mode: 'HTML'});
     }
-      
+
   }
 
 }
+
 function getFilesizeInBytes(filename) {
   try {
     const stats = fs.statSync(filename);
@@ -878,6 +553,7 @@ function getFilesizeInBytes(filename) {
     return 0;
   }
 }
+
 function error(args) {
   try {
     //console.error(args);
@@ -897,6 +573,7 @@ function error(args) {
     console.error(err);
   }
 }
+
 async function auto_update() {
   const watchdogPath = process.env.FLUX_WATCHDOG_PATH || '/home/$USER/watchdog';
 
@@ -1029,7 +706,7 @@ async function auto_update() {
         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
         console.log('Update successfully.');
         console.log(' ');
-        sleep.sleep(2); 
+        sleep.sleep(2);
       } else {
         console.log('Script called.');
         console.log(' ');
@@ -1109,11 +786,12 @@ if (config.zelbench_update == "1") {
 console.log('=================================================================');
 
 }
+
 async function flux_check() {
   const fluxbenchServiceName = isArcane
   ? "fluxbenchd.service"
   : "zelcash.service";
-  
+
   const fluxOsRestartCmd = isArcane
     ? "sudo systemctl restart fluxos.service"
     : "pm2 restart flux";
@@ -1127,7 +805,7 @@ async function flux_check() {
   web_hook_url=config.web_hook_url;
   action=config.action;
   ping=config.ping;
-  label=config.label; 
+  label=config.label;
 
   const service_inactive = shell.exec(`systemctl list-units --full -all | grep ${fluxdServiceName} | grep -o inactive`,{ silent: true }).stdout;
   const data_time_utc = moment.utc().format('YYYY-MM-DD HH:mm:ss');
@@ -1152,7 +830,7 @@ if ( service_inactive.trim() == "inactive" ) {
   ++inactive_counter;
   console.log('============================================================['+inactive_counter+']');
   if ( inactive_counter > 6 ) {
-    if (!isArcane) shell.exec("sudo fuser -k 16125/tcp",{ silent: true }) 
+    if (!isArcane) shell.exec("sudo fuser -k 16125/tcp",{ silent: true })
     shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true })
     inactive_counter=0;
    } else {
@@ -1202,8 +880,8 @@ if ( zelbench_counter > 2 || zelcashd_counter > 2 || zelbench_daemon_counter > 2
         console.log('Watchdog in sleep mode => '+data_time_utc);
         console.log('=================================================================');
         if  (  zelcashd_counter == 3  || zelbench_counter == 3 ) {
-          
-          if  ( sleep_msg == "0" ) { 
+
+          if  ( sleep_msg == "0" ) {
             sleep_msg=1;
             await discord_hook("Watchdog in sleep mode..\nManual operation needed!",web_hook_url,ping,'Alert','#EA1414','Info','watchdog_manual1.png',label);
           // Watchdog in sleep mode notification telegram
@@ -1225,7 +903,7 @@ try{
     var zelbench_getstatus_info = JSON.parse(shell.exec(`${bench_cli} getstatus`,{ silent: true }).stdout);
     var zelbench_status = zelbench_getstatus_info.status;
     var zelback_status = zelbench_getstatus_info.zelback;
-    
+
     if ( typeof zelback_status  == "undefined" ){
       zelback_status = zelbench_getstatus_info.flux;
     }
@@ -1266,9 +944,9 @@ try{
 const mongod_check = shell.exec("pgrep mongod",{ silent: true }).stdout;
 
 if ( typeof zelbench_status == "undefined" && typeof zelcash_check !== "undefined" ) {
-  
+
     ++zelbench_daemon_counter;
-  
+
    if ( zelbench_daemon_counter == "1" ){
 
      console.log('Flux benchmark crash detected!');
@@ -1303,14 +981,14 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_check !== "undefine
       await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
    }
-  
+
   console.log('=================================================================');
   return;
-  
+
 } else {
-  
+
  if ( zelbench_daemon_counter != 0 ) {
-   
+
   await discord_hook("Flux benchmark fixed!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
   //Fixed benchmark notification telegram
   var emoji_title = '\u{1F4A1}';
@@ -1319,11 +997,11 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_check !== "undefine
   var field_type = 'Info: ';
   var msg_text = 'Flux benchmark fixed!';
   await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
-  zelbench_daemon_counter=0; 
+  zelbench_daemon_counter=0;
  }
 }
-  
-  
+
+
 if (zelcash_node_status == "" || typeof zelcash_node_status == "undefined" ){
    console.log('Fluxnode status = dead');
 } else {
@@ -1684,11 +1362,116 @@ tire_lock=0;
    var skip_sync=between(1, 4);
    if ( skip_sync > 2 ) {
      await Check_Sync(zelcash_height,data_time_utc);
-   } else {   
-    console.log('Sync check skipped: '+skip_sync+' <= 2');   
-   }  
+   } else {
+    console.log('Sync check skipped: '+skip_sync+' <= 2');
+   }
  }
 console.log('============================================================['+zelbench_counter+'/'+zelcashd_counter+']');
 }
 
+async function parseEnvironmentFile(filePath) {
+  try {
+    const envContent = await fsPromises.readFile(filePath, 'utf-8');
+    const variables = {};
+
+    const lines = envContent.split('\n');
+    lines.forEach((line) => {
+      const match = line.match(/^(\w+)=["']?([^"']+)["']?$/);
+      if (match) {
+        const [, key, value] = match;
+        variables[key] = value;
+      }
+    });
+
+    return variables;
+  } catch (error) {
+    console.error(`Error reading or parsing environment file: ${error.message}`);
+    return {};
+  }
+}
+
+async function initializeHistoricValues() {
+  const filePath = '/etc/environment';
+  try {
+    const variables = await parseEnvironmentFile(filePath);
+
+    arcaneVersionHistory = variables.FLUXOS_VERSION || '';
+    arcaneVersionHumanHistory = variables.FLUXOS_HUMAN_VERSION || '';
+
+    console.log('Initialized historic values:');
+    console.log(`FLUXOS_VERSION: ${arcaneVersionHistory}`);
+    console.log(`FLUXOS_HUMAN_VERSION: ${arcaneVersionHumanHistory}`);
+  } catch (error) {
+    console.error(`Failed to initialize historic values: ${error.message}`);
+  }
+}
+
+async function arcane_update_detection() {
+  const filePath = '/etc/environment';
+  try {
+    const variables = await parseEnvironmentFile(filePath);
+
+    const arcaneVersion = variables.FLUXOS_VERSION || '';
+    const arcaneHumanVersion = variables.FLUXOS_HUMAN_VERSION || '';
+
+    if (arcaneVersion && arcaneVersion !== arcaneVersionHistory) {
+      console.log('New ArcaneOS version detected:');
+      console.log('=================================================================');
+      console.log('Local version: ' + arcaneVersionHistory.trim());
+      console.log('Remote version: ' + arcaneVersion.trim());
+      console.log('=================================================================');
+
+      arcaneVersionHistory = arcaneVersion;
+      arcaneVersionHumanHistory = arcaneHumanVersion;
+
+      // Notify via Discord
+      await discord_hook(
+        `ArcaneOS updated!\nVersion: **${arcaneVersion} (${arcaneHumanVersion})**`,
+        web_hook_url,
+        ping,
+        'Update',
+        '#1F8B4C',
+        'Info',
+        'watchdog_update1.png',
+        label
+      );
+
+      // Notify via Telegram
+      const emoji_title = '\u{23F0}';
+      const emoji_update = '\u{1F504}';
+      const info_type = 'New Update ' + emoji_update;
+      const field_type = 'Info: ';
+      const msg_text =
+        'ArcaneOS updated!\n<b>Version: </b>' +
+        arcaneVersion +
+        ' (' +
+        arcaneHumanVersion +
+        ')';
+      await send_telegram_msg(
+        emoji_title,
+        info_type,
+        field_type,
+        msg_text,
+        label
+      );
+    }
+  } catch (error) {
+    console.error(`Failed to parse environment file: ${error.message}`);
+  }
+}
+
+fs.watch('/etc/environment', (eventType) => {
+  if (eventType === 'change') {
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(async () => {
+      console.log('/etc/environment file changed. Reloading environment variables...');
+      await arcane_update_detection();
+    }, 2000);
+  }
+});
+
 setInterval(job_creator, 1*60*1000);
+
+(async () => {
+  await initializeHistoricValues();
+})();
