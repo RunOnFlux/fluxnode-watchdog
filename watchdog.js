@@ -1224,8 +1224,6 @@ else {
 
 }
 
-
-
 if (mongod_check == ""){
 
   ++mongod_counter;
@@ -1282,10 +1280,6 @@ return;
  }
   mongod_counter=0;
 }
-
-
-
-
 
 if ( zelbench_benchmark_status == "toaster" || zelbench_benchmark_status == "failed" ){
   ++zelbench_counter;
