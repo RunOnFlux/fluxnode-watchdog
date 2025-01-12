@@ -1366,7 +1366,6 @@ async function parseEnvironmentFile(filePath) {
   try {
     const envContent = await fsPromises.readFile(filePath, 'utf-8');
     const variables = {};
-
     const lines = envContent.split('\n');
     lines.forEach((line) => {
       const match = line.match(/^(\w+)=["']?([^"']+)["']?$/);
@@ -1375,7 +1374,6 @@ async function parseEnvironmentFile(filePath) {
         variables[key] = value;
       }
     });
-
     return variables;
   } catch (error) {
     console.error(`Error reading or parsing environment file: ${error.message}`);
@@ -1394,6 +1392,7 @@ async function initializeHistoricValues() {
     console.log('Initialized historic values:');
     console.log(`FLUXOS_VERSION: ${arcaneVersionHistory}`);
     console.log(`FLUXOS_HUMAN_VERSION: ${arcaneVersionHumanHistory}`);
+    
   } catch (error) {
     console.error(`Failed to initialize historic values: ${error.message}`);
   }
@@ -1403,50 +1402,23 @@ async function arcane_update_detection() {
   const filePath = '/etc/environment';
   try {
     const variables = await parseEnvironmentFile(filePath);
-
     const arcaneVersion = variables.FLUXOS_VERSION || '';
     const arcaneHumanVersion = variables.FLUXOS_HUMAN_VERSION || '';
-
     if (arcaneVersion && arcaneVersion !== arcaneVersionHistory) {
       console.log('New ArcaneOS version detected:');
       console.log('=================================================================');
       console.log('Local version: ' + arcaneVersionHistory.trim());
       console.log('Remote version: ' + arcaneVersion.trim());
       console.log('=================================================================');
-
       arcaneVersionHistory = arcaneVersion;
       arcaneVersionHumanHistory = arcaneHumanVersion;
-
-      // Notify via Discord
-      await discord_hook(
-        `ArcaneOS updated!\nVersion: **${arcaneVersion} (${arcaneHumanVersion})**`,
-        web_hook_url,
-        ping,
-        'Update',
-        '#1F8B4C',
-        'Info',
-        'watchdog_update1.png',
-        label
-      );
-
-      // Notify via Telegram
+      await discord_hook(`ArcaneOS updated!\nVersion: **${arcaneVersion} (${arcaneHumanVersion})**`, web_hook_url, ping, 'Update','#1F8B4C', 'Info', 'watchdog_update1.png', label);
       const emoji_title = '\u{23F0}';
       const emoji_update = '\u{1F504}';
       const info_type = 'New Update ' + emoji_update;
       const field_type = 'Info: ';
-      const msg_text =
-        'ArcaneOS updated!\n<b>Version: </b>' +
-        arcaneVersion +
-        ' (' +
-        arcaneHumanVersion +
-        ')';
-      await send_telegram_msg(
-        emoji_title,
-        info_type,
-        field_type,
-        msg_text,
-        label
-      );
+      const msg_text = `ArcaneOS updated!\n<b>Version: </b>${arcaneVersion} (${arcaneHumanVersion})`;
+      await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
     }
   } catch (error) {
     console.error(`Failed to parse environment file: ${error.message}`);
