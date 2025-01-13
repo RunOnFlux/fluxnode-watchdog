@@ -20,6 +20,7 @@ const fluxbenchPath = process.env.FLUXBENCH_PATH;
 const fluxOsRootDir = process.env.FLUXOS_PATH || "/home/$USER/zelflux";
 const fluxOsConfigPath = path.join(fluxOsRootDir, "config/userconfig.js")
 const fluxdServiceName = isArcane ? "fluxd.service" : "zelcash.service";
+const historyFilePath = path.join(__dirname, 'history.json');
 
 let arcaneVersionHistory = '';
 let arcaneVersionHumanHistory = '';
@@ -1362,6 +1363,45 @@ tire_lock=0;
 console.log('============================================================['+zelbench_counter+'/'+zelcashd_counter+']');
 }
 
+async function saveHistoricValues() {
+  const history = {
+    arcaneVersionHistory,
+    arcaneVersionHumanHistory,
+  };
+
+  try {
+    await fsPromises.writeFile(historyFilePath, JSON.stringify(history, null, 2), 'utf-8');
+    console.log('Saved historic values to history.json');
+  } catch (error) {
+    console.error('Failed to save history:', error.message);
+  }
+}
+
+async function loadHistoricValues() {
+  try {
+    const content = await fsPromises.readFile(historyFilePath, 'utf-8');
+    const history = JSON.parse(content);
+    
+    arcaneVersionHistory = history.arcaneVersionHistory || ''; 
+    arcaneVersionHumanHistory = history.arcaneVersionHumanHistory || ''; 
+
+    console.log('Successfully loaded historic values from history.json:');
+    console.log(`FLUXOS_VERSION: ${arcaneVersionHistory}`);
+    console.log(`FLUXOS_HUMAN_VERSION: ${arcaneVersionHumanHistory}`);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      console.warn('History file does not exist. Falling back to empty strings.');
+      arcaneVersionHistory = ''; 
+      arcaneVersionHumanHistory = '';
+    } else {
+      console.error('Error loading historic values:', error.message);
+      arcaneVersionHistory = '';
+      arcaneVersionHumanHistory = '';
+    }
+  }
+}
+
+
 async function parseEnvironmentFile(filePath) {
   try {
     const envContent = await fsPromises.readFile(filePath, 'utf-8');
@@ -1389,7 +1429,7 @@ async function initializeHistoricValues() {
     arcaneVersionHistory = variables.FLUXOS_VERSION || '';
     arcaneVersionHumanHistory = variables.FLUXOS_HUMAN_VERSION || '';
 
-    console.log('Initialized historic values:');
+    console.log('Initialized values from /etc/environment:');
     console.log(`FLUXOS_VERSION: ${arcaneVersionHistory}`);
     console.log(`FLUXOS_HUMAN_VERSION: ${arcaneVersionHumanHistory}`);
     
@@ -1439,7 +1479,11 @@ if (isArcane) {
 
 if (isArcane) {
   (async () => {
-    await initializeHistoricValues();
+    await loadHistoricValues();
+    if (!arcaneVersionHistory) {
+        await initializeHistoricValues();
+        await saveHistoricValues();
+    }
   })();
 }
 
