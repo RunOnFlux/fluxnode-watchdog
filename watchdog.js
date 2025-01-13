@@ -1484,6 +1484,7 @@ if (isArcane) {
         await initializeHistoricValues();
         await saveHistoricValues();
     }
+    await arcane_update_detection();
   })();
 }
 
