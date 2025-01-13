@@ -1449,10 +1449,10 @@ async function arcane_update_detection() {
       console.log('=================================================================');
       console.log('Local version: ' + arcaneVersionHistory.trim());
       console.log('Remote version: ' + arcaneVersion.trim());
-      console.log('=================================================================');
       arcaneVersionHistory = arcaneVersion;
       arcaneVersionHumanHistory = arcaneHumanVersion;
       await saveHistoricValues();
+      console.log('=================================================================');
       await discord_hook(`ArcaneOS updated!\nVersion: **${arcaneVersion} (${arcaneHumanVersion})**`, web_hook_url, ping, 'Update','#1F8B4C', 'Info', 'watchdog_update1.png', label);
       const emoji_title = '\u{23F0}';
       const emoji_update = '\u{1F504}';
@@ -1464,18 +1464,6 @@ async function arcane_update_detection() {
   } catch (error) {
     console.error(`Failed to parse environment file: ${error.message}`);
   }
-}
-
-if (isArcane) {
-  fs.watch('/etc/environment', (eventType) => {
-    if (eventType === 'change') {
-      clearTimeout(debounceTimeout);
-      debounceTimeout = setTimeout(async () => {
-        console.log('/etc/environment file changed. Reloading environment variables...');
-        await arcane_update_detection();
-      }, 2000);
-    }
-  });
 }
 
 if (isArcane) {
