@@ -1452,6 +1452,7 @@ async function arcane_update_detection() {
       console.log('=================================================================');
       arcaneVersionHistory = arcaneVersion;
       arcaneVersionHumanHistory = arcaneHumanVersion;
+      await saveHistoricValues();
       await discord_hook(`ArcaneOS updated!\nVersion: **${arcaneVersion} (${arcaneHumanVersion})**`, web_hook_url, ping, 'Update','#1F8B4C', 'Info', 'watchdog_update1.png', label);
       const emoji_title = '\u{23F0}';
       const emoji_update = '\u{1F504}';
