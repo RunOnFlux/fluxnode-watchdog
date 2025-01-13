@@ -1438,7 +1438,7 @@ async function initializeHistoricValues() {
   }
 }
 
-async function arcane_update_detection() {
+async function arcaneUpdateDetection() {
   const filePath = '/etc/environment';
   try {
     const variables = await parseEnvironmentFile(filePath);
@@ -1473,7 +1473,7 @@ if (isArcane) {
         await initializeHistoricValues();
         await saveHistoricValues();
     }
-    await arcane_update_detection();
+    await arcaneUpdateDetection();
   })();
 }
 
