@@ -1299,7 +1299,7 @@ if ( zelbench_benchmark_status == "toaster" || zelbench_benchmark_status == "fai
     var field_type = 'Info: ';
     var msg_text = 'Benchmark restarted!';
     await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
-
+    sleep.sleep(180);
   }
 }
 else{
@@ -1342,7 +1342,7 @@ console.log('CPU eps under minimum limit for '+tire_name+'('+eps_limit+'), curre
     var field_type = 'Info: ';
     var msg_text = 'Benchmark restarted!';
     await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
-
+    sleep.sleep(180);
   }
 }
 
