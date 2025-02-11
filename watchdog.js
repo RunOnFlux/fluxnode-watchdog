@@ -850,8 +850,7 @@ if ( component_update == 1 ) {
 if ( zelbench_counter > 2 || zelcashd_counter > 2 || zelbench_daemon_counter > 2 ){
 
   try{
-    var  zelcash_getinfo_info = JSON.parse(shell.exec(`${daemon_cli} getinfo`,{ silent: true }).stdout);
-    var zelcash_check = zelcash_getinfo_info.version;
+    var zelcash_height = JSON.parse(shell.exec(`${daemon_cli} getblockcount`,{ silent: true }).stdout);
     var zelbench_getstatus_info = JSON.parse(shell.exec(`${bench_cli} getstatus`,{ silent: true }).stdout);
     var zelbench_benchmark_status = zelbench_getstatus_info.benchmarking;
   } catch {
@@ -870,7 +869,7 @@ if ( zelbench_counter > 2 || zelcashd_counter > 2 || zelbench_daemon_counter > 2
 
    }
 
-   if (typeof zelcash_check !== "undefined" && zelbench_benchmark_status != "toaster" && zelbench_benchmark_status != "failed"  && typeof zelbench_benchmark_status !== "undefined"){
+   if (typeof zelcash_height !== "undefined" && zelbench_benchmark_status != "toaster" && zelbench_benchmark_status != "failed"  && typeof zelbench_benchmark_status !== "undefined"){
           zelcashd_counter=0;
           zelbench_counter=0;
           zelbench_daemon_counter=0;
@@ -923,11 +922,9 @@ try{
 
 }
 
- try{
-    var  zelcash_getinfo_info = JSON.parse(shell.exec(`${daemon_cli} getinfo`,{ silent: true }).stdout);
-    var zelcash_check = zelcash_getinfo_info.version;
-    var zelcash_height = zelcash_getinfo_info.blocks;
- }catch {
+try{
+  var  zelcash_height = JSON.parse(shell.exec(`${daemon_cli} getblockcount`,{ silent: true }).stdout);
+}catch {
 
 }
 
@@ -943,7 +940,7 @@ try{
 
 const mongod_check = shell.exec("pgrep mongod",{ silent: true }).stdout;
 
-if ( typeof zelbench_status == "undefined" && typeof zelcash_check !== "undefined" ) {
+if ( typeof zelbench_status == "undefined" && typeof zelcash_height !== "undefined" ) {
 
     ++zelbench_daemon_counter;
 
@@ -1166,7 +1163,7 @@ if (activesince  == "null" || activesince == "" || typeof activesince == "undefi
   console.log('Active since = '+active_local_time);
 }
 
-if (typeof zelcash_check !== "undefined" ){
+if (typeof zelcash_height !== "undefined" ){
 
    if (  zelcashd_counter != 0 ) {
 
