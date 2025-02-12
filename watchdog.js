@@ -851,7 +851,6 @@ if ( zelbench_counter > 2 || zelcashd_counter > 2 || zelbench_daemon_counter > 2
 
   try{
     var zelcash_height = shell.exec(`${daemon_cli} getblockcount`,{ silent: true }).stdout;
-    console.log('zelcash_height:' + zelcash_height);
     var zelbench_getstatus_info = JSON.parse(shell.exec(`${bench_cli} getstatus`,{ silent: true }).stdout);
     var zelbench_benchmark_status = zelbench_getstatus_info.benchmarking;
   } catch {
@@ -925,7 +924,6 @@ try{
 
 try{
   var  zelcash_height = shell.exec(`${daemon_cli} getblockcount`,{ silent: true }).stdout;
-  console.log('zelcash_height:' + zelcash_height);
 }catch {
 
 }
