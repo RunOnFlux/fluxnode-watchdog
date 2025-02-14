@@ -51,19 +51,23 @@ function between(min, max) {
 
 let autoUpdate = between(60, 240); // auto update will now be different on each node and checks are defined between 1 and 4h.
 async function job_creator(){
+  try{
+    ++job_count;
 
-  ++job_count;
-
-  if ( job_count % autoUpdate === 0 ) {
-    await auto_update();
-  }
-  if ( job_count % 4   === 0 ) {
-    await flux_check();
-  }
-  // reset job count
-  if ( job_count % autoUpdate === 0 ) {
-    job_count = 0;
-    autoUpdate = between(60, 240);
+    if ( job_count % autoUpdate === 0 ) {
+      await auto_update();
+    }
+    if ( job_count % 4   === 0 ) {
+      await flux_check();
+    }
+    // reset job count
+    if ( job_count % autoUpdate === 0 ) {
+      job_count = 0;
+      autoUpdate = between(60, 240);
+    }
+  } finally {
+    sleep.sleep(60);
+    job_creator();
   }
 }
 
@@ -984,7 +988,7 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_height !== "undefin
 
 } else {
 
- if ( zelbench_daemon_counter != 0 ) {
+ if ( zelbench_daemon_counter != 0  && (zelbench_benchmark_status === "CUMULUS" || zelbench_benchmark_status === "NIMBUS" || zelbench_benchmark_status === "STRATUS")) {
 
   await discord_hook("Flux benchmark fixed!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
   //Fixed benchmark notification telegram
@@ -1299,12 +1303,11 @@ if ( zelbench_benchmark_status == "toaster" || zelbench_benchmark_status == "fai
     var field_type = 'Info: ';
     var msg_text = 'Benchmark restarted!';
     await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
-    sleep.sleep(180);
   }
 }
 else{
 
- if ( zelbench_counter != 0 ) {
+ if ( zelbench_counter != 0 && (zelbench_benchmark_status === "CUMULUS" || zelbench_benchmark_status === "NIMBUS" || zelbench_benchmark_status === "STRATUS")) {
 
   await discord_hook("Flux benchmark fixed!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
 
@@ -1342,7 +1345,6 @@ console.log('CPU eps under minimum limit for '+tire_name+'('+eps_limit+'), curre
     var field_type = 'Info: ';
     var msg_text = 'Benchmark restarted!';
     await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
-    sleep.sleep(180);
   }
 }
 
@@ -1474,4 +1476,4 @@ if (isArcane) {
   })();
 }
 
-setInterval(job_creator, 1*60*1000);
+job_creator();
