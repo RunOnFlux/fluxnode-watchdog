@@ -986,9 +986,7 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_height !== "undefin
   console.log('=================================================================');
   return;
 
-} else {
-
- if ( zelbench_daemon_counter != 0  && (zelbench_benchmark_status === "CUMULUS" || zelbench_benchmark_status === "NIMBUS" || zelbench_benchmark_status === "STRATUS")) {
+} else if ( zelbench_daemon_counter != 0  && ["CUMULUS", "NIMBUS", "STRATUS"].includes(zelbench_benchmark_status)) {
 
   await discord_hook("Flux benchmark fixed!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
   //Fixed benchmark notification telegram
@@ -999,7 +997,7 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_height !== "undefin
   var msg_text = 'Flux benchmark fixed!';
   await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
   zelbench_daemon_counter=0;
- }
+
 }
 
 
@@ -1305,10 +1303,7 @@ if ( zelbench_benchmark_status == "toaster" || zelbench_benchmark_status == "fai
     await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
   }
 }
-else{
-
- if ( zelbench_counter != 0 && (zelbench_benchmark_status === "CUMULUS" || zelbench_benchmark_status === "NIMBUS" || zelbench_benchmark_status === "STRATUS")) {
-
+else if ( zelbench_counter != 0 && ["CUMULUS", "NIMBUS", "STRATUS"].includes(zelbench_benchmark_status)) {
   await discord_hook("Flux benchmark fixed!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
 
   //Fixed benchmark notification telegram
@@ -1318,10 +1313,10 @@ else{
   var field_type = 'Info: ';
   var msg_text = 'Flux benchmark fixed!';
   await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
-
- }
-zelbench_counter=0;
+  zelbench_counter=0;
 }
+
+
 
 delete require.cache[require.resolve('./config.js')];
 var config = require('./config.js');
