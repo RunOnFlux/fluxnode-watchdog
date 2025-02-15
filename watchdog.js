@@ -9,7 +9,7 @@ const axios = require('axios');
 const path = require('node:path');
 
 sleep.sleep(15);
-console.log('Watchdog v6.3.3 Starting...');
+console.log('Watchdog v6.4.0 Starting...');
 console.log('=================================================================');
 
 const configPath = 'config.js';
@@ -51,19 +51,23 @@ function between(min, max) {
 
 let autoUpdate = between(60, 240); // auto update will now be different on each node and checks are defined between 1 and 4h.
 async function job_creator(){
+  try{
+    ++job_count;
 
-  ++job_count;
-
-  if ( job_count % autoUpdate === 0 ) {
-    await auto_update();
-  }
-  if ( job_count % 4   === 0 ) {
-    await flux_check();
-  }
-  // reset job count
-  if ( job_count % autoUpdate === 0 ) {
-    job_count = 0;
-    autoUpdate = between(60, 240);
+    if ( job_count % autoUpdate === 0 ) {
+      await auto_update();
+    }
+    if ( job_count % 4   === 0 ) {
+      await flux_check();
+    }
+    // reset job count
+    if ( job_count % autoUpdate === 0 ) {
+      job_count = 0;
+      autoUpdate = between(60, 240);
+    }
+  } finally {
+    sleep.sleep(60);
+    job_creator();
   }
 }
 
@@ -850,8 +854,7 @@ if ( component_update == 1 ) {
 if ( zelbench_counter > 2 || zelcashd_counter > 2 || zelbench_daemon_counter > 2 ){
 
   try{
-    var  zelcash_getinfo_info = JSON.parse(shell.exec(`${daemon_cli} getinfo`,{ silent: true }).stdout);
-    var zelcash_check = zelcash_getinfo_info.version;
+    var zelcash_height = shell.exec(`${daemon_cli} getblockcount`,{ silent: true }).stdout;
     var zelbench_getstatus_info = JSON.parse(shell.exec(`${bench_cli} getstatus`,{ silent: true }).stdout);
     var zelbench_benchmark_status = zelbench_getstatus_info.benchmarking;
   } catch {
@@ -870,7 +873,7 @@ if ( zelbench_counter > 2 || zelcashd_counter > 2 || zelbench_daemon_counter > 2
 
    }
 
-   if (typeof zelcash_check !== "undefined" && zelbench_benchmark_status != "toaster" && zelbench_benchmark_status != "failed"  && typeof zelbench_benchmark_status !== "undefined"){
+   if (typeof zelcash_height !== "undefined" && zelbench_benchmark_status != "toaster" && zelbench_benchmark_status != "failed"  && typeof zelbench_benchmark_status !== "undefined"){
           zelcashd_counter=0;
           zelbench_counter=0;
           zelbench_daemon_counter=0;
@@ -923,11 +926,9 @@ try{
 
 }
 
- try{
-    var  zelcash_getinfo_info = JSON.parse(shell.exec(`${daemon_cli} getinfo`,{ silent: true }).stdout);
-    var zelcash_check = zelcash_getinfo_info.version;
-    var zelcash_height = zelcash_getinfo_info.blocks;
- }catch {
+try{
+  var  zelcash_height = shell.exec(`${daemon_cli} getblockcount`,{ silent: true }).stdout;
+}catch {
 
 }
 
@@ -943,7 +944,7 @@ try{
 
 const mongod_check = shell.exec("pgrep mongod",{ silent: true }).stdout;
 
-if ( typeof zelbench_status == "undefined" && typeof zelcash_check !== "undefined" ) {
+if ( typeof zelbench_status == "undefined" && typeof zelcash_height !== "undefined" ) {
 
     ++zelbench_daemon_counter;
 
@@ -985,9 +986,7 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_check !== "undefine
   console.log('=================================================================');
   return;
 
-} else {
-
- if ( zelbench_daemon_counter != 0 ) {
+} else if ( zelbench_daemon_counter != 0  && ["CUMULUS", "NIMBUS", "STRATUS"].includes(zelbench_benchmark_status)) {
 
   await discord_hook("Flux benchmark fixed!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
   //Fixed benchmark notification telegram
@@ -998,7 +997,7 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_check !== "undefine
   var msg_text = 'Flux benchmark fixed!';
   await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
   zelbench_daemon_counter=0;
- }
+
 }
 
 
@@ -1166,7 +1165,7 @@ if (activesince  == "null" || activesince == "" || typeof activesince == "undefi
   console.log('Active since = '+active_local_time);
 }
 
-if (typeof zelcash_check !== "undefined" ){
+if (typeof zelcash_height !== "undefined" ){
 
    if (  zelcashd_counter != 0 ) {
 
@@ -1302,13 +1301,9 @@ if ( zelbench_benchmark_status == "toaster" || zelbench_benchmark_status == "fai
     var field_type = 'Info: ';
     var msg_text = 'Benchmark restarted!';
     await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
-
   }
 }
-else{
-
- if ( zelbench_counter != 0 ) {
-
+else if ( zelbench_counter != 0 && ["CUMULUS", "NIMBUS", "STRATUS"].includes(zelbench_benchmark_status)) {
   await discord_hook("Flux benchmark fixed!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
 
   //Fixed benchmark notification telegram
@@ -1318,10 +1313,10 @@ else{
   var field_type = 'Info: ';
   var msg_text = 'Flux benchmark fixed!';
   await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
-
- }
-zelbench_counter=0;
+  zelbench_counter=0;
 }
+
+
 
 delete require.cache[require.resolve('./config.js')];
 var config = require('./config.js');
@@ -1345,14 +1340,13 @@ console.log('CPU eps under minimum limit for '+tire_name+'('+eps_limit+'), curre
     var field_type = 'Info: ';
     var msg_text = 'Benchmark restarted!';
     await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
-
   }
 }
 
 } else {
 tire_lock=0;
 }
- if ( zelcash_height != "" && typeof zelcash_height != "undefined" ){
+ if ( zelcash_height != "" && typeof zelcash_height !== "undefined" ){
    var skip_sync=between(1, 4);
    if ( skip_sync > 2 ) {
      await Check_Sync(zelcash_height,data_time_utc);
@@ -1477,4 +1471,4 @@ if (isArcane) {
   })();
 }
 
-setInterval(job_creator, 1*60*1000);
+job_creator();
