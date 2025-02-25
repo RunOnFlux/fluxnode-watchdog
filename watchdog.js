@@ -9,7 +9,7 @@ const axios = require('axios');
 const path = require('node:path');
 
 sleep.sleep(15);
-console.log('Watchdog v6.4.0 Starting...');
+console.log('Watchdog v6.4.1 Starting...');
 console.log('=================================================================');
 
 const configPath = 'config.js';
@@ -1460,15 +1460,19 @@ async function arcaneUpdateDetection() {
   }
 }
 
-if (isArcane) {
-  (async () => {
-    await loadHistoricValues();
-    if (!arcaneVersionHistory) {
-        await initializeHistoricValues();
-        await saveHistoricValues();
-    }
-    await arcaneUpdateDetection();
-  })();
+async function checkArcane() {
+  await loadHistoricValues();
+  if (!arcaneVersionHistory) {
+      await initializeHistoricValues();
+      await saveHistoricValues();
+  }
+  await arcaneUpdateDetection();
 }
 
-job_creator();
+if (isArcane) {
+  checkArcane().then(() => job_creator());
+} else {
+  job_creator();
+}
+
+
