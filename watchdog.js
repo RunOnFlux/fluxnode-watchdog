@@ -156,12 +156,8 @@ async function discord_hook(node_msg, web_hook_url, ping, title, color, field_na
         }
       }
 
-      const response = await Hook.send(msg);
-      if (response) {
-        console.log('Discord webhook message sent successfully');
-      } else {
-        console.error('Discord webhook message failed: No response');
-      }
+      await Hook.send(msg);
+      console.log('Discord webhook message sent successfully');
     } catch (error) {
       console.error('Error sending Discord webhook message:', error.message);
     }
