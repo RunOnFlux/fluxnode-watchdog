@@ -534,7 +534,7 @@ async function send_telegram_msg(emoji_title, info_type, field_type, msg_text, l
         parse_mode: 'HTML',
       });
 
-      console.log('Telegram message sent successfully');
+      console.log('Telegram webhook message sent successfully');
     } catch (error) {
       console.error('Error sending Telegram message:', error.message);
     }
