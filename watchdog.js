@@ -4,7 +4,6 @@ const moment = require('moment');
 const webhook = require("@prince25/discord-webhook-sender")
 const fs = require('fs');
 const fsPromises = require('fs/promises');
-const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const path = require('node:path');
 
@@ -522,30 +521,40 @@ console.log('=================================================================')
 
 }
 
-async function send_telegram_msg(emoji_title,info_type,field_type,msg_text,label) {
+async function send_telegram_msg(emoji_title, info_type, field_type, msg_text, label) {
   var telegram_alert = config.telegram_alert;
 
-  if  ( typeof telegram_alert !== "undefined" && telegram_alert == 1 ) {
+  if (typeof telegram_alert !== "undefined" && telegram_alert == 1) {
+    try {
+      const node_ip = await Myip();
+      var api_port = shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`, { silent: true });
+      if (api_port == "") {
+        var ui_port = 16126;
+      } else {
+        var ui_port = Number(api_port.trim()) - 1;
+      }
 
-    const node_ip = await Myip();
-    var api_port = shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`,{ silent: true });
-          if ( api_port == "" ){
-             var ui_port = 16126;
-          } else {
-             var ui_port = (Number(api_port.trim()))-1;
-          }
-    const token = config.telegram_bot_token;
-    const chatId = config.telegram_chat_id;
-    const bot = new TelegramBot(token, {polling: false});
+      const token = config.telegram_bot_token;
+      const chatId = config.telegram_chat_id;
+      const telegramApiUrl = `https://api.telegram.org/bot${token}/sendMessage`;
+      let messageText;
+      if (typeof label === "undefined") {
+        messageText = `${emoji_title}<b> FluxNode Watchdog </b>${emoji_title}\n----------------------------------------\n<b>Type: </b>${info_type}\n<b>URL:</b> http://${node_ip}:${ui_port}\n<b>${field_type}</b>${msg_text}`;
+      } else {
+        messageText = `${emoji_title}<b> FluxNode Watchdog </b>${emoji_title}\n----------------------------------------\n<b>Type: </b>${info_type}\n<b>Name: </b>${label}\n<b>URL:</b> http://${node_ip}:${ui_port}\n<b>${field_type}</b>${msg_text}`;
+      }
+      
+      await axios.post(telegramApiUrl, {
+        chat_id: chatId,
+        text: messageText,
+        parse_mode: 'HTML',
+      });
 
-    if (  typeof label == "undefined" ) {
-      bot.sendMessage(chatId, emoji_title+"<b> FluxNode Watchdog </b>"+emoji_title+"\n----------------------------------------\n<b>Type: </b>"+info_type+"\n<b>URL:</b> http://"+node_ip+":"+ui_port+"\n<b>"+field_type+"</b>"+msg_text,{parse_mode: 'HTML'});
-    } else {
-         bot.sendMessage(chatId, emoji_title+"<b> FluxNode Watchdog </b>"+emoji_title+"\n----------------------------------------\n<b>Type: </b>"+info_type+"\n<b>Name: </b>"+label+"\n<b>URL:</b> http://"+node_ip+":"+ui_port+"\n<b>"+field_type+"</b>"+msg_text,{parse_mode: 'HTML'});
+      console.log('Telegram message sent successfully');
+    } catch (error) {
+      console.error('Error sending Telegram message:', error.message);
     }
-
   }
-
 }
 
 function getFilesizeInBytes(filename) {
