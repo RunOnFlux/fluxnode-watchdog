@@ -101,83 +101,71 @@ async function Myip(){
 return MyIP;
 }
 
-async function discord_hook(node_msg,web_hook_url,ping,title,color,field_name,thumbnail_png,label) {
-  if ( typeof web_hook_url !== "undefined" && web_hook_url !== "0" ) {
+async function discord_hook(node_msg, web_hook_url, ping, title, color, field_name, thumbnail_png, label) {
 
-      if ( typeof ping == "undefined" || ping == "0") {
-
-          var node_ip = await Myip();
-          var api_port = shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`,{ silent: true });
-          if ( api_port == "" ){
-             var ui_port = 16126;
-          } else {
-             var ui_port = (Number(api_port.trim()))-1;
-          }
-          const Hook = new webhook.Webhook(`${web_hook_url}`);
-          Hook.setUsername('Flux Watchdog');
-
-         if (  typeof label == "undefined" ) {
-
-          const msg = new webhook.MessageBuilder()
-          .setTitle(`:loudspeaker: **FluxNode ${title}**`)
-          .addField('URL:', `http://${node_ip}:${ui_port}`)
-          .addField(`${field_name}:`, node_msg)
-          .setColor(`${color}`)
-          .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`);
-          await Hook.send(msg);
-
-         } else {
-
-          const msg = new webhook.MessageBuilder()
-          .setTitle(`:loudspeaker: **FluxNode ${title}**`)
-          .addField('Name:', `${label}`)
-          .addField('URL:', `http://${node_ip}:${ui_port}`)
-          .addField(`${field_name}:`, node_msg)
-          .setColor(`${color}`)
-          .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`);
-          await Hook.send(msg);
-
-         }
-
-
+  if (typeof web_hook_url !== "undefined" && web_hook_url !== "0") {
+    try {
+      const node_ip = await Myip();
+      var api_port = shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`, { silent: true });
+      if (api_port == "") {
+        var ui_port = 16126;
       } else {
-          var node_ip = await Myip();
-          var api_port = shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`,{ silent: true });
-          if ( api_port == "" ){
-             var ui_port = 16126;
-          } else {
-             var ui_port = (Number(api_port.trim()))-1;
-          }
-          const Hook = new webhook.Webhook(`${web_hook_url}`);
-          Hook.setUsername('Flux Watchdog');
-
-        if (  typeof label == "undefined" ) {
-          const msg = new webhook.MessageBuilder()
-          .setTitle(`:loudspeaker: **FluxNode ${title}**`)
-          .addField('URL:', `http://${node_ip}:${ui_port}`)
-          .addField(`${field_name}:`, node_msg)
-          .setColor(`${color}`)
-          .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`)
-          .setText(`Ping: <@${ping}>`);
-          await Hook.send(msg);
-        } else {
-
-           const msg = new webhook.MessageBuilder()
-          .setTitle(`:loudspeaker: **FluxNode ${title}**`)
-          .addField('Name:', `${label}`)
-          .addField('URL:', `http://${node_ip}:${ui_port}`)
-          .addField(`${field_name}:`, node_msg)
-          .setColor(`${color}`)
-          .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`)
-          .setText(`Ping: <@${ping}>`);
-          await Hook.send(msg);
-
-        }
-
+        var ui_port = Number(api_port.trim()) - 1;
       }
 
-   }
+      const Hook = new webhook.Webhook(`${web_hook_url}`);
+      Hook.setUsername('Flux Watchdog');
 
+      // Construct the message based on ping and label
+      let msg;
+      if (typeof ping == "undefined" || ping == "0") {
+        if (typeof label == "undefined") {
+          msg = new webhook.MessageBuilder()
+            .setTitle(`:loudspeaker: **FluxNode ${title}**`)
+            .addField('URL:', `http://${node_ip}:${ui_port}`)
+            .addField(`${field_name}:`, node_msg)
+            .setColor(`${color}`)
+            .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`);
+        } else {
+          msg = new webhook.MessageBuilder()
+            .setTitle(`:loudspeaker: **FluxNode ${title}**`)
+            .addField('Name:', `${label}`)
+            .addField('URL:', `http://${node_ip}:${ui_port}`)
+            .addField(`${field_name}:`, node_msg)
+            .setColor(`${color}`)
+            .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`);
+        }
+      } else {
+        if (typeof label == "undefined") {
+          msg = new webhook.MessageBuilder()
+            .setTitle(`:loudspeaker: **FluxNode ${title}**`)
+            .addField('URL:', `http://${node_ip}:${ui_port}`)
+            .addField(`${field_name}:`, node_msg)
+            .setColor(`${color}`)
+            .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`)
+            .setText(`Ping: <@${ping}>`);
+        } else {
+          msg = new webhook.MessageBuilder()
+            .setTitle(`:loudspeaker: **FluxNode ${title}**`)
+            .addField('Name:', `${label}`)
+            .addField('URL:', `http://${node_ip}:${ui_port}`)
+            .addField(`${field_name}:`, node_msg)
+            .setColor(`${color}`)
+            .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`)
+            .setText(`Ping: <@${ping}>`);
+        }
+      }
+
+      const response = await Hook.send(msg);
+      if (response) {
+        console.log('Discord webhook message sent successfully');
+      } else {
+        console.error('Discord webhook message failed: No response');
+      }
+    } catch (error) {
+      console.error('Error sending Discord webhook message:', error.message);
+    }
+  } 
 }
 
 function max() {
