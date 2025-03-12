@@ -4,12 +4,11 @@ const moment = require('moment');
 const webhook = require("@prince25/discord-webhook-sender")
 const fs = require('fs');
 const fsPromises = require('fs/promises');
-const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const path = require('node:path');
 
 sleep.sleep(15);
-console.log('Watchdog v6.4.1 Starting...');
+console.log('Watchdog v6.4.2 Starting...');
 console.log('=================================================================');
 
 const configPath = 'config.js';
@@ -102,83 +101,67 @@ async function Myip(){
 return MyIP;
 }
 
-async function discord_hook(node_msg,web_hook_url,ping,title,color,field_name,thumbnail_png,label) {
-  if ( typeof web_hook_url !== "undefined" && web_hook_url !== "0" ) {
+async function discord_hook(node_msg, web_hook_url, ping, title, color, field_name, thumbnail_png, label) {
 
-      if ( typeof ping == "undefined" || ping == "0") {
-
-          var node_ip = await Myip();
-          var api_port = shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`,{ silent: true });
-          if ( api_port == "" ){
-             var ui_port = 16126;
-          } else {
-             var ui_port = (Number(api_port.trim()))-1;
-          }
-          const Hook = new webhook.Webhook(`${web_hook_url}`);
-          Hook.setUsername('Flux Watchdog');
-
-         if (  typeof label == "undefined" ) {
-
-          const msg = new webhook.MessageBuilder()
-          .setTitle(`:loudspeaker: **FluxNode ${title}**`)
-          .addField('URL:', `http://${node_ip}:${ui_port}`)
-          .addField(`${field_name}:`, node_msg)
-          .setColor(`${color}`)
-          .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`);
-          await Hook.send(msg);
-
-         } else {
-
-          const msg = new webhook.MessageBuilder()
-          .setTitle(`:loudspeaker: **FluxNode ${title}**`)
-          .addField('Name:', `${label}`)
-          .addField('URL:', `http://${node_ip}:${ui_port}`)
-          .addField(`${field_name}:`, node_msg)
-          .setColor(`${color}`)
-          .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`);
-          await Hook.send(msg);
-
-         }
-
-
+  if (typeof web_hook_url !== "undefined" && web_hook_url !== "0") {
+    try {
+      const node_ip = await Myip();
+      var api_port = shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`, { silent: true });
+      if (api_port == "") {
+        var ui_port = 16126;
       } else {
-          var node_ip = await Myip();
-          var api_port = shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`,{ silent: true });
-          if ( api_port == "" ){
-             var ui_port = 16126;
-          } else {
-             var ui_port = (Number(api_port.trim()))-1;
-          }
-          const Hook = new webhook.Webhook(`${web_hook_url}`);
-          Hook.setUsername('Flux Watchdog');
-
-        if (  typeof label == "undefined" ) {
-          const msg = new webhook.MessageBuilder()
-          .setTitle(`:loudspeaker: **FluxNode ${title}**`)
-          .addField('URL:', `http://${node_ip}:${ui_port}`)
-          .addField(`${field_name}:`, node_msg)
-          .setColor(`${color}`)
-          .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`)
-          .setText(`Ping: <@${ping}>`);
-          await Hook.send(msg);
-        } else {
-
-           const msg = new webhook.MessageBuilder()
-          .setTitle(`:loudspeaker: **FluxNode ${title}**`)
-          .addField('Name:', `${label}`)
-          .addField('URL:', `http://${node_ip}:${ui_port}`)
-          .addField(`${field_name}:`, node_msg)
-          .setColor(`${color}`)
-          .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`)
-          .setText(`Ping: <@${ping}>`);
-          await Hook.send(msg);
-
-        }
-
+        var ui_port = Number(api_port.trim()) - 1;
       }
 
-   }
+      const Hook = new webhook.Webhook(`${web_hook_url}`);
+      Hook.setUsername('Flux Watchdog');
 
+      // Construct the message based on ping and label
+      let msg;
+      if (typeof ping == "undefined" || ping == "0") {
+        if (typeof label == "undefined") {
+          msg = new webhook.MessageBuilder()
+            .setTitle(`:loudspeaker: **FluxNode ${title}**`)
+            .addField('URL:', `http://${node_ip}:${ui_port}`)
+            .addField(`${field_name}:`, node_msg)
+            .setColor(`${color}`)
+            .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`);
+        } else {
+          msg = new webhook.MessageBuilder()
+            .setTitle(`:loudspeaker: **FluxNode ${title}**`)
+            .addField('Name:', `${label}`)
+            .addField('URL:', `http://${node_ip}:${ui_port}`)
+            .addField(`${field_name}:`, node_msg)
+            .setColor(`${color}`)
+            .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`);
+        }
+      } else {
+        if (typeof label == "undefined") {
+          msg = new webhook.MessageBuilder()
+            .setTitle(`:loudspeaker: **FluxNode ${title}**`)
+            .addField('URL:', `http://${node_ip}:${ui_port}`)
+            .addField(`${field_name}:`, node_msg)
+            .setColor(`${color}`)
+            .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`)
+            .setText(`Ping: <@${ping}>`);
+        } else {
+          msg = new webhook.MessageBuilder()
+            .setTitle(`:loudspeaker: **FluxNode ${title}**`)
+            .addField('Name:', `${label}`)
+            .addField('URL:', `http://${node_ip}:${ui_port}`)
+            .addField(`${field_name}:`, node_msg)
+            .setColor(`${color}`)
+            .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`)
+            .setText(`Ping: <@${ping}>`);
+        }
+      }
+
+      await Hook.send(msg);
+      console.log('Discord webhook message sent successfully');
+    } catch (error) {
+      console.error('Error sending Discord webhook message:', error.message);
+    }
+  } 
 }
 
 function max() {
@@ -522,30 +505,40 @@ console.log('=================================================================')
 
 }
 
-async function send_telegram_msg(emoji_title,info_type,field_type,msg_text,label) {
+async function send_telegram_msg(emoji_title, info_type, field_type, msg_text, label) {
   var telegram_alert = config.telegram_alert;
 
-  if  ( typeof telegram_alert !== "undefined" && telegram_alert == 1 ) {
+  if (typeof telegram_alert !== "undefined" && telegram_alert == 1) {
+    try {
+      const node_ip = await Myip();
+      var api_port = shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`, { silent: true });
+      if (api_port == "") {
+        var ui_port = 16126;
+      } else {
+        var ui_port = Number(api_port.trim()) - 1;
+      }
 
-    const node_ip = await Myip();
-    var api_port = shell.exec(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`,{ silent: true });
-          if ( api_port == "" ){
-             var ui_port = 16126;
-          } else {
-             var ui_port = (Number(api_port.trim()))-1;
-          }
-    const token = config.telegram_bot_token;
-    const chatId = config.telegram_chat_id;
-    const bot = new TelegramBot(token, {polling: false});
+      const token = config.telegram_bot_token;
+      const chatId = config.telegram_chat_id;
+      const telegramApiUrl = `https://api.telegram.org/bot${token}/sendMessage`;
+      let messageText;
+      if (typeof label === "undefined") {
+        messageText = `${emoji_title}<b> FluxNode Watchdog </b>${emoji_title}\n----------------------------------------\n<b>Type: </b>${info_type}\n<b>URL:</b> http://${node_ip}:${ui_port}\n<b>${field_type}</b>${msg_text}`;
+      } else {
+        messageText = `${emoji_title}<b> FluxNode Watchdog </b>${emoji_title}\n----------------------------------------\n<b>Type: </b>${info_type}\n<b>Name: </b>${label}\n<b>URL:</b> http://${node_ip}:${ui_port}\n<b>${field_type}</b>${msg_text}`;
+      }
+      
+      await axios.post(telegramApiUrl, {
+        chat_id: chatId,
+        text: messageText,
+        parse_mode: 'HTML',
+      });
 
-    if (  typeof label == "undefined" ) {
-      bot.sendMessage(chatId, emoji_title+"<b> FluxNode Watchdog </b>"+emoji_title+"\n----------------------------------------\n<b>Type: </b>"+info_type+"\n<b>URL:</b> http://"+node_ip+":"+ui_port+"\n<b>"+field_type+"</b>"+msg_text,{parse_mode: 'HTML'});
-    } else {
-         bot.sendMessage(chatId, emoji_title+"<b> FluxNode Watchdog </b>"+emoji_title+"\n----------------------------------------\n<b>Type: </b>"+info_type+"\n<b>Name: </b>"+label+"\n<b>URL:</b> http://"+node_ip+":"+ui_port+"\n<b>"+field_type+"</b>"+msg_text,{parse_mode: 'HTML'});
+      console.log('Telegram webhook message sent successfully');
+    } catch (error) {
+      console.error('Error sending Telegram message:', error.message);
     }
-
   }
-
 }
 
 function getFilesizeInBytes(filename) {
