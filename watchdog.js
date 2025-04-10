@@ -866,7 +866,7 @@ if ( zelbench_counter > 2 || zelcashd_counter > 2 || zelbench_daemon_counter > 2
 
    }
 
-   if (typeof zelcash_height !== "undefined" && zelbench_benchmark_status != "toaster" && zelbench_benchmark_status != "failed"  && typeof zelbench_benchmark_status !== "undefined"){
+   if (typeof zelcash_height !== "undefined" && isNumber(zelcash_height) && zelbench_benchmark_status != "toaster" && zelbench_benchmark_status != "failed"  && typeof zelbench_benchmark_status !== "undefined"){
           zelcashd_counter=0;
           zelbench_counter=0;
           zelbench_daemon_counter=0;
@@ -937,7 +937,7 @@ try{
 
 const mongod_check = shell.exec("pgrep mongod",{ silent: true }).stdout;
 
-if ( typeof zelbench_status == "undefined" && typeof zelcash_height !== "undefined" ) {
+if ( typeof zelbench_status == "undefined" && typeof zelcash_height !== "undefined" && isNumber(zelcash_height) ) {
 
     ++zelbench_daemon_counter;
 
@@ -1158,7 +1158,7 @@ if (activesince  == "null" || activesince == "" || typeof activesince == "undefi
   console.log('Active since = '+active_local_time);
 }
 
-if (typeof zelcash_height !== "undefined" ){
+if (typeof zelcash_height !== "undefined" && isNumber(zelcash_height) ){
 
    if (  zelcashd_counter != 0 ) {
 
@@ -1339,7 +1339,7 @@ console.log('CPU eps under minimum limit for '+tire_name+'('+eps_limit+'), curre
 } else {
 tire_lock=0;
 }
- if ( zelcash_height != "" && typeof zelcash_height !== "undefined" ){
+ if ( zelcash_height != "" && typeof zelcash_height !== "undefined" && isNumber(zelcash_height) ){
    var skip_sync=between(1, 4);
    if ( skip_sync > 2 ) {
      await Check_Sync(zelcash_height,data_time_utc);
@@ -1461,6 +1461,8 @@ async function checkArcane() {
   }
   await arcaneUpdateDetection();
 }
+
+function isNumber(n) { return !isNaN(parseFloat(n)) && !isNaN(n - 0) }
 
 if (isArcane) {
   checkArcane().then(() => job_creator());
