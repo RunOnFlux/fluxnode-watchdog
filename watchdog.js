@@ -1,3 +1,5 @@
+const { version: packageVersion } = require('./package.json');
+
 const shell = require('shelljs');
 const moment = require('moment');
 const webhook = require("@prince25/discord-webhook-sender")
@@ -8,7 +10,7 @@ const path = require('node:path');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-console.log('Watchdog v6.4.3 Starting...');
+console.log(`Watchdog ${packageVersion} Starting...`);
 console.log('=================================================================');
 
 const configPath = 'config.js';
