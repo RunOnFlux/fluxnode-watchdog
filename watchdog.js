@@ -1,5 +1,6 @@
+const { version: packageVersion } = require('./package.json');
+
 const shell = require('shelljs');
-const sleep = require('sleep');
 const moment = require('moment');
 const webhook = require("@prince25/discord-webhook-sender")
 const fs = require('fs');
@@ -7,8 +8,9 @@ const fsPromises = require('fs/promises');
 const axios = require('axios');
 const path = require('node:path');
 
-sleep.sleep(15);
-console.log('Watchdog v6.4.3 Starting...');
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+console.log(`Watchdog ${packageVersion} Starting...`);
 console.log('=================================================================');
 
 const configPath = 'config.js';
@@ -65,7 +67,7 @@ async function job_creator(){
       autoUpdate = between(60, 240);
     }
   } finally {
-    sleep.sleep(60);
+    await sleep(60 * 1_000);
     job_creator();
   }
 }
@@ -236,7 +238,7 @@ async function Check_Sync(height,time) {
 
 
          shell.exec(`sudo systemctl stop ${fluxdServiceName}`,{ silent: true });
-         sleep.sleep(2);
+         await sleep(2 * 1_000);
          if (!isArcane) shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
          shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true });
          console.log(time+' => Flux daemon restarting...');
@@ -440,13 +442,8 @@ const dataToWrite = `module.exports = {
 console.log('Creating config file...');
 console.log("========================");
 
-const userconfig = fs.createWriteStream(configPath);
-  userconfig.once('open', () => {
-  userconfig.write(dataToWrite);
-  userconfig.end();
-});
+fs.writeFile(configPath, dataToWrite);
 
-sleep.sleep(3);
 var config = require('./config.js');
 var web_hook_url=config.web_hook_url;
 var action=config.action;
@@ -618,7 +615,7 @@ async function auto_update() {
 
         console.log('Update successfully.');
       }
-      sleep.sleep(20);
+      await sleep(20 * 1_000);
       console.log(' ');
     }
   }
@@ -638,13 +635,13 @@ async function auto_update() {
        console.log('Remote version: '+zelflux_remote_version.trim());
        console.log('=================================================================');
        shell.exec(fluxOsStopCmd,{ silent: true }).stdout;
-       sleep.sleep(5);
+       await sleep(5 * 1_000);
        shell.exec(`cd ${fluxOsRootDir} && git checkout . && git fetch && git pull -p`,{ silent: true }).stdout;
-       sleep.sleep(5);
+       await sleep(5 * 1_000);
        shell.exec(fluxOsInstallCmd,{ silent: true }).stdout;
-       if (isArcane) sleep.sleep(5);
+       if (isArcane) await sleep(5 * 1_000);
        shell.exec(fluxOsStartCmd,{ silent: true }).stdout;
-       sleep.sleep(20);
+       await sleep(20);
        var zelflux_lv = shell.exec(`jq -r '.version' ${fluxOsPkgFile}`,{ silent: true }).stdout;
        if ( zelflux_remote_version.trim() == zelflux_lv.trim() ) {
 
@@ -660,7 +657,7 @@ async function auto_update() {
 
          console.log('Update successfully.');
         }
-        sleep.sleep(20);
+       await sleep(20 * 1_000);
        console.log(' ');
     }
    }
@@ -690,7 +687,7 @@ async function auto_update() {
       shell.exec("sudo apt-get update",{ silent: true });
       shell.exec("sudo apt-get install flux -y",{ silent: true });
       var zelcash_dpkg_version_after = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
-      sleep.sleep(2);
+      await sleep(2 * 1_000);
       shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true });
       if ( (zelcash_dpkg_version_before !== zelcash_dpkg_version_after) && zelcash_dpkg_version_after != "" ){
         await discord_hook(`Fluxnode daemon updated!\nVersion: **${zelcash_dpkg_version_after}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
@@ -703,11 +700,11 @@ async function auto_update() {
         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
         console.log('Update successfully.');
         console.log(' ');
-        sleep.sleep(2);
+        await sleep(2 * 1_000);
       } else {
         console.log('Script called.');
         console.log(' ');
-        sleep.sleep(2);
+        await sleep(2 * 1_000);
       }
     }
   }
@@ -749,7 +746,7 @@ if (config.zelbench_update == "1") {
    if (!isArcane) shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
    shell.exec("sudo apt-get update",{ silent: true });
    shell.exec("sudo apt-get install fluxbench -y",{ silent: true });
-   sleep.sleep(2);
+   await sleep(2 * 1_000);
    if (isArcane) shell.exec("sudo systemctl start fluxbenchd.service");
    shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true });
 
@@ -769,11 +766,11 @@ if (config.zelbench_update == "1") {
 
         console.log('Update successfully.');
         console.log(' ');
-        sleep.sleep(2);
+        await sleep(2 * 1_000);
      } else {
         console.log('Script called.');
         console.log(' ');
-        sleep.sleep(2);
+        await sleep(2 * 1_000);
      }
 
 
@@ -954,13 +951,13 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_height !== "undefin
      var field_type = 'Error: ';
      var msg_text = 'Flux benchmark crash detected!';
      await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
-     sleep.sleep(2);
+     await sleep(2 * 1_000);
 
    }
 
    if ( typeof action  == "undefined" || action == "1" ){
       shell.exec(`sudo systemctl stop ${fluxbenchServiceName}`,{ silent: true });
-      sleep.sleep(2);
+      await sleep(2 * 1_000);
       if (!isArcane) shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
       shell.exec(`sudo systemctl start ${fluxbenchServiceName}`,{ silent: true });
       console.log(data_time_utc+' => Flux benchmark restarting...');
@@ -1045,7 +1042,7 @@ if (zelback_status == "" || typeof zelback_status == "undefined"){
     var msg_text = 'FluxOS disconnected!';
     await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
-    sleep.sleep(2);
+    await sleep(2 * 1_000);
    lock_zelback=1;
 
     }
@@ -1055,7 +1052,7 @@ if (zelback_status == "" || typeof zelback_status == "undefined"){
        if ( disc_count == 2 ){
         shell.exec(fluxOsRestartCmd,{ silent: true });
         shell.exec(`sudo systemctl restart ${fluxdServiceName}`,{ silent: true });
-        sleep.sleep(2);
+        await sleep(2 * 1_000);
         console.log(data_time_utc+' => FluxOS restarting...');
         await discord_hook("FluxOS restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
@@ -1193,13 +1190,13 @@ else {
      var field_type = 'Error: ';
      var msg_text = 'Flux daemon crash detected!';
      await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
-     sleep.sleep(2);
+     await sleep(2 * 1_000);
 
    }
 
    if ( typeof action  == "undefined" || action == "1" ){
       shell.exec(`sudo systemctl stop ${fluxdServiceName}`,{ silent: true });
-      sleep.sleep(2);
+      await sleep(2 * 1_000);
       if (!isArcane) shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
       shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true });
       console.log(data_time_utc+' => Flux daemon restarting...');
@@ -1234,7 +1231,7 @@ if ( mongod_counter == "1" ){
   var msg_text = 'MongoDB crash detected!';
   await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
- sleep.sleep(2);
+  await sleep(2 * 1_000);
 }
 
   if (mongod_counter < 3){
