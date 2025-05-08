@@ -3,6 +3,10 @@
   "version": "6.5.0",
   "description": "Watchdog for fluxnode",
   "main": "watchdog.js",
+  "scripts": {
+    "format:check": "prettier --check .",
+    "format:write": "prettier --write ."
+  },
   "dependencies": {
     "@prince25/discord-webhook-sender": "~1.2.3",
     "axios": "~1.8.4",
