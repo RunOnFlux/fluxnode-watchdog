@@ -43,6 +43,7 @@ var h_IP=0;
 var component_update=0;
 var job_count=0;
 var sleep_msg=0;
+var last_failure_benchmark_time=0;
 
 function between(min, max) {
   return Math.floor(
@@ -867,6 +868,7 @@ if ( zelbench_counter > 2 || zelcashd_counter > 2 || zelbench_daemon_counter > 2
           zelcashd_counter=0;
           zelbench_counter=0;
           zelbench_daemon_counter=0;
+          last_failure_benchmark_time=0;
           watchdog_sleep="N/A"
           sleep_msg=0;
    } else {
@@ -987,6 +989,7 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_height !== "undefin
   var msg_text = 'Flux benchmark fixed!';
   await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
   zelbench_daemon_counter=0;
+  last_failure_benchmark_time=0;
 
 }
 
@@ -1272,25 +1275,28 @@ return;
 }
 
 if ( zelbench_benchmark_status == "toaster" || zelbench_benchmark_status == "failed" ){
-  ++zelbench_counter;
-  var error_line=shell.exec(`egrep -a --color 'Failed' ${fluxbenchLogPath} | tail -1 | sed 's/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.//'`,{ silent: true });
-  error('Benchmark problem detected! Fluxbench status: '+zelbench_benchmark_status);
-  error('Reason: '+error_line.trim());
-  console.log('Benchmark problem detected! Fluxbench status: '+zelbench_benchmark_status);
-  console.log('Reason: '+error_line.trim());
-  if ( typeof action  == "undefined" || action == "1" ){
+  // Only act if this is a new benchmark failure (zelbench_time is newer than last failure)
+  if (zelbench_time && Number(zelbench_time) > last_failure_benchmark_time) {
+    ++zelbench_counter;
+    last_failure_benchmark_time = Number(zelbench_time);
+    var error_line=shell.exec(`egrep -a --color 'Failed' ${fluxbenchLogPath} | tail -1 | sed 's/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.//'`,{ silent: true });
+    error('Benchmark problem detected! Fluxbench status: '+zelbench_benchmark_status);
+    error('Reason: '+error_line.trim());
+    console.log('Benchmark problem detected! Fluxbench status: '+zelbench_benchmark_status);
+    console.log('Reason: '+error_line.trim());
+    if ( typeof action  == "undefined" || action == "1" ){
 
-    console.log(data_time_utc+' => Fluxbench restarting...');
-    shell.exec(`${bench_cli} restartnodebenchmarks`,{ silent: true });
-    await discord_hook("Benchmark restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
+      console.log(data_time_utc+' => Benchmark restart scheduled for next few minutes...');
+      await discord_hook("Benchmark restart scheduled!\nBenchmarks will be restarted in the next few minutes.",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
-    // Fix action benchmark notification telegram
-    var emoji_title = '\u{26A1}';
-    var emoji_fix = '\u{1F528}';
-    var info_type = 'Fix Action '+emoji_fix;
-    var field_type = 'Info: ';
-    var msg_text = 'Benchmark restarted!';
-    await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+      // Fix action benchmark notification telegram
+      var emoji_title = '\u{26A1}';
+      var emoji_fix = '\u{1F528}';
+      var info_type = 'Fix Action '+emoji_fix;
+      var field_type = 'Info: ';
+      var msg_text = 'Benchmark restart scheduled! Benchmarks will be restarted in the next few minutes.';
+      await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+    }
   }
 }
 else if ( zelbench_counter != 0 && ["CUMULUS", "NIMBUS", "STRATUS"].includes(zelbench_benchmark_status)) {
@@ -1304,6 +1310,7 @@ else if ( zelbench_counter != 0 && ["CUMULUS", "NIMBUS", "STRATUS"].includes(zel
   var msg_text = 'Flux benchmark fixed!';
   await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
   zelbench_counter=0;
+  last_failure_benchmark_time=0;
 }
 
 
@@ -1312,29 +1319,33 @@ delete require.cache[require.resolve('./config.js')];
 var config = require('./config.js');
 
 if (config.tier_eps_min != "" && config.tier_eps_min != "0" && zelbench_eps != "" && zelbench_eps < config.tier_eps_min ){
-++tire_lock;
-if ( tire_lock < 4 ) {
-error('Benchmark problem detected! CPU eps under minimum limit for '+tire_name+'('+eps_limit+'), current eps: '+zelbench_eps.toFixed(2));
-console.log('Benchmark problem detected!');
-console.log('CPU eps under minimum limit for '+tire_name+'('+eps_limit+'), current eps: '+zelbench_eps.toFixed(2));
-  if ( typeof action  == "undefined" || action == "1" ){
+// Only act if this is a new benchmark failure (zelbench_time is newer than last failure)
+if (zelbench_time && Number(zelbench_time) > last_failure_benchmark_time) {
+  ++tire_lock;
+  if ( tire_lock < 4 ) {
+    last_failure_benchmark_time = Number(zelbench_time);
+    error('Benchmark problem detected! CPU eps under minimum limit for '+tire_name+'('+eps_limit+'), current eps: '+zelbench_eps.toFixed(2));
+    console.log('Benchmark problem detected!');
+    console.log('CPU eps under minimum limit for '+tire_name+'('+eps_limit+'), current eps: '+zelbench_eps.toFixed(2));
+    if ( typeof action  == "undefined" || action == "1" ){
 
-    console.log(data_time_utc+' => Fluxbench restarting...');
-    shell.exec(`${bench_cli} restartnodebenchmarks`,{ silent: true });
-    await discord_hook("Benchmark restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
+      console.log(data_time_utc+' => Benchmark restart scheduled for next few minutes...');
+      await discord_hook("Benchmark restart scheduled!\nBenchmarks will be restarted in the next few minutes.",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
-    // Fix action benchmark notification telegram
-    var emoji_title = '\u{26A1}';
-    var emoji_fix = '\u{1F528}';
-    var info_type = 'Fix Action '+emoji_fix;
-    var field_type = 'Info: ';
-    var msg_text = 'Benchmark restarted!';
-    await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+      // Fix action benchmark notification telegram
+      var emoji_title = '\u{26A1}';
+      var emoji_fix = '\u{1F528}';
+      var info_type = 'Fix Action '+emoji_fix;
+      var field_type = 'Info: ';
+      var msg_text = 'Benchmark restart scheduled! Benchmarks will be restarted in the next few minutes.';
+      await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+    }
   }
 }
 
 } else {
 tire_lock=0;
+last_failure_benchmark_time=0;
 }
  if ( zelcash_height != "" && typeof zelcash_height !== "undefined" && isNumber(zelcash_height) ){
    var skip_sync=between(1, 4);
