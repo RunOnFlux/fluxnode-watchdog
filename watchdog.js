@@ -646,14 +646,14 @@ async function auto_update() {
        var zelflux_lv = shell.exec(`jq -r '.version' ${fluxOsPkgFile}`,{ silent: true }).stdout;
        if ( zelflux_remote_version.trim() == zelflux_lv.trim() ) {
 
-         await discord_hook(`FluxOS updated!\nVersion: **${zelflux_remote_version}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
+         await discord_hook(`FluxOS Gravity updated!\nVersion: **${zelflux_remote_version}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
 
          // Update notification FluxOS telegram
          var emoji_title = '\u{23F0}';
          var emoji_update='\u{1F504}';
          var info_type = 'New Update '+emoji_update;
          var field_type = 'Info: ';
-         var msg_text = "FluxOS updated!\n<b>Version: </b>"+zelflux_remote_version;
+         var msg_text = "FluxOS Gravity updated!\n<b>Version: </b>"+zelflux_remote_version;
          await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
          console.log('Update successfully.');
