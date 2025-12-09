@@ -640,6 +640,10 @@ async function auto_update() {
        shell.exec(`cd ${fluxOsRootDir} && git checkout . && git fetch && git pull -p`,{ silent: true }).stdout;
        await sleep(5 * 1_000);
        shell.exec(fluxOsInstallCmd,{ silent: true }).stdout;
+       await sleep(4 * 1_000);
+       if (!fs.existsSync(path.join(fluxOsRootDir, 'CloudUI'))) {
+         shell.exec(`cd ${fluxOsRootDir} && npm run update:cloudui`,{ silent: true }).stdout;
+       }
        if (isArcane) await sleep(5 * 1_000);
        shell.exec(fluxOsStartCmd,{ silent: true }).stdout;
        await sleep(20);
