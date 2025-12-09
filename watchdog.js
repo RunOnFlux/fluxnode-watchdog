@@ -667,6 +667,62 @@ async function auto_update() {
     }
    }
   }
+  // FluxCloud UI version check
+  var cloudui_release_info = shell.exec("curl -sS -m 10 https://api.github.com/repos/RunOnFlux/fluxos-frontend/releases/latest",{ silent: true }).stdout;
+  var cloudui_remote_hash = "";
+  var cloudui_remote_tag = "";
+  var cloudui_is_master = false;
+  try {
+    var cloudui_release = JSON.parse(cloudui_release_info);
+    cloudui_is_master = cloudui_release.target_commitish === "master";
+    cloudui_remote_tag = cloudui_release.tag_name || "";
+    if (cloudui_is_master && cloudui_release.assets && cloudui_release.assets.length > 0) {
+      var dist_asset = cloudui_release.assets.find(a => a.name === "dist.tar.gz");
+      if (dist_asset && dist_asset.digest) {
+        cloudui_remote_hash = dist_asset.digest.replace("sha256:", "");
+      }
+    }
+  } catch (e) {
+    console.log('FluxCloud UI: Failed to parse release info');
+  }
+
+  var cloudui_local_version_file = path.join(fluxOsRootDir, 'CloudUI', 'version');
+  var cloudui_local_hash = "";
+  if (fs.existsSync(cloudui_local_version_file)) {
+    cloudui_local_hash = fs.readFileSync(cloudui_local_version_file, 'utf8').trim();
+  }
+
+  console.log(`FluxCloud UI current: ${cloudui_remote_tag} (${cloudui_remote_hash.substring(0,8) || 'N/A'}) installed: ${cloudui_local_hash.substring(0,8) || 'N/A'}`);
+  if (cloudui_is_master && cloudui_remote_hash != "" && cloudui_remote_hash !== cloudui_local_hash) {
+    component_update = 1;
+    console.log('New FluxCloud UI version detected:');
+    console.log('=================================================================');
+    console.log('Local hash: '+(cloudui_local_hash || 'N/A'));
+    console.log('Remote hash: '+cloudui_remote_hash);
+    console.log('Remote tag: '+cloudui_remote_tag);
+    console.log('=================================================================');
+    shell.exec(`cd ${fluxOsRootDir} && npm run update:cloudui`,{ silent: true }).stdout;
+    await sleep(5 * 1_000);
+    var cloudui_lv = "";
+    if (fs.existsSync(cloudui_local_version_file)) {
+      cloudui_lv = fs.readFileSync(cloudui_local_version_file, 'utf8').trim();
+    }
+    if (cloudui_remote_hash == cloudui_lv) {
+      await discord_hook(`FluxCloud UI updated!\nVersion: **${cloudui_remote_tag}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
+
+      // Update notification FluxCloud UI telegram
+      var emoji_title = '\u{23F0}';
+      var emoji_update='\u{1F504}';
+      var info_type = 'New Update '+emoji_update;
+      var field_type = 'Info: ';
+      var msg_text = "FluxCloud UI updated!\n<b>Version: </b>"+cloudui_remote_tag;
+      await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+
+      console.log('Update successfully.');
+    }
+    await sleep(20 * 1_000);
+    console.log(' ');
+  }
   if (config.zelcash_update == "1") {
     var zelcash_remote_version = shell.exec("curl -s -m 5 https://apt.runonflux.io/pool/main/f/flux/ | grep -o '[0-9].[0-9].[0-9]' | head -n1",{ silent: true }).stdout;
     var zelcash_local_version = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
