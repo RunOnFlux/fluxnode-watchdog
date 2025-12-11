@@ -353,10 +353,22 @@ console.log('Telegram alert:  disabled');
 }
 
 
-console.log(`Update settings (always enabled):`);
+console.log(`Update settings:`);
+if ( config.zelcash_update == "1" ) {
 console.log('=> Flux daemon:  enabled');
+} else {
+console.log('=> Flux daemon:  disabled');
+}
+if ( config.zelbench_update == "1" ) {
 console.log('=> Fluxbench: enabled');
+} else {
+console.log('=> Fluxbench: disabled');
+}
+if ( config.zelflux_update == "1" ) {
 console.log('=> FluxOS:  enabled');
+} else {
+console.log('=> FluxOS:  disabled');
+}
 console.log('=================================================================');
 }
 else {
@@ -471,10 +483,22 @@ console.log('Telegram alert:  enabled');
 console.log('Telegram alert:  disabled');
 }
 
-console.log(`Update settings (always enabled):`);
+console.log(`Update settings:`);
+if ( config.zelcash_update == "1" ) {
 console.log('=> Flux daemon:  enabled');
+} else {
+console.log('=> Flux daemon:  disabled');
+}
+if ( config.zelbench_update == "1" ) {
 console.log('=> Fluxbench: enabled');
+} else {
+console.log('=> Fluxbench: disabled');
+}
+if ( config.zelflux_update == "1" ) {
 console.log('=> FluxOS:  enabled');
+} else {
+console.log('=> FluxOS:  disabled');
+}
 console.log('=================================================================');
 
 }
@@ -596,7 +620,8 @@ async function auto_update() {
       console.log(' ');
     }
   }
-  // FluxOS auto-update (always enabled)
+  if (config.zelflux_update == "1") {
+
    var zelflux_remote_version = shell.exec("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json | jq -r '.version'",{ silent: true }).stdout;
    var zelflux_local_version = shell.exec(`jq -r '.version' ${fluxOsPkgFile}`,{ silent: true }).stdout;
 
@@ -641,6 +666,7 @@ async function auto_update() {
        console.log(' ');
     }
    }
+  }
   // FluxCloud UI version check (only if CloudUI is installed)
   var cloudui_dir = path.join(fluxOsRootDir, 'CloudUI');
   var cloudui_local_version_file = path.join(cloudui_dir, 'version');
@@ -697,7 +723,7 @@ async function auto_update() {
       console.log(' ');
     }
   }
-  // Flux daemon auto-update (always enabled)
+  if (config.zelcash_update == "1") {
     var zelcash_remote_version = shell.exec("curl -s -m 5 https://apt.runonflux.io/pool/main/f/flux/ | grep -o '[0-9].[0-9].[0-9]' | head -n1",{ silent: true }).stdout;
     var zelcash_local_version = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
     console.log(`Flux daemon current: ${zelcash_remote_version.trim()} installed: ${zelcash_local_version.trim()}`);
@@ -743,8 +769,10 @@ async function auto_update() {
       }
     }
   }
+ }
 
-// Fluxbench auto-update (always enabled)
+if (config.zelbench_update == "1") {
+
  var zelbench_remote_version = shell.exec("curl -s -m 5 https://apt.runonflux.io/pool/main/f/fluxbench/ | grep -o '[0-9].[0-9].[0-9]' | head -n1",{ silent: true }).stdout;
  var zelbench_local_version = shell.exec("dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'",{ silent: true }).stdout;
 
@@ -809,6 +837,7 @@ async function auto_update() {
 
   }
  }
+}
 console.log('=================================================================');
 
 }
