@@ -353,21 +353,28 @@ console.log('Telegram alert:  disabled');
 }
 
 
-console.log(`Update settings:`);
-if ( config.zelcash_update == "1" ) {
-console.log('=> Flux daemon:  enabled');
+if (isArcane) {
+  console.log(`Update settings (config-dependent for ArcaneOS):`);
+  if ( config.zelcash_update == "1" ) {
+    console.log('=> Flux daemon:  enabled');
+  } else {
+    console.log('=> Flux daemon:  disabled');
+  }
+  if ( config.zelbench_update == "1" ) {
+    console.log('=> Fluxbench: enabled');
+  } else {
+    console.log('=> Fluxbench: disabled');
+  }
+  if ( config.zelflux_update == "1" ) {
+    console.log('=> FluxOS:  enabled');
+  } else {
+    console.log('=> FluxOS:  disabled');
+  }
 } else {
-console.log('=> Flux daemon:  disabled');
-}
-if ( config.zelbench_update == "1" ) {
-console.log('=> Fluxbench: enabled');
-} else {
-console.log('=> Fluxbench: disabled');
-}
-if ( config.zelflux_update == "1" ) {
-console.log('=> FluxOS:  enabled');
-} else {
-console.log('=> FluxOS:  disabled');
+  console.log(`Update settings (always enabled for non-Arcane):`);
+  console.log('=> Flux daemon:  enabled');
+  console.log('=> Fluxbench: enabled');
+  console.log('=> FluxOS:  enabled');
 }
 console.log('=================================================================');
 }
@@ -483,21 +490,28 @@ console.log('Telegram alert:  enabled');
 console.log('Telegram alert:  disabled');
 }
 
-console.log(`Update settings:`);
-if ( config.zelcash_update == "1" ) {
-console.log('=> Flux daemon:  enabled');
+if (isArcane) {
+  console.log(`Update settings (config-dependent for ArcaneOS):`);
+  if ( config.zelcash_update == "1" ) {
+    console.log('=> Flux daemon:  enabled');
+  } else {
+    console.log('=> Flux daemon:  disabled');
+  }
+  if ( config.zelbench_update == "1" ) {
+    console.log('=> Fluxbench: enabled');
+  } else {
+    console.log('=> Fluxbench: disabled');
+  }
+  if ( config.zelflux_update == "1" ) {
+    console.log('=> FluxOS:  enabled');
+  } else {
+    console.log('=> FluxOS:  disabled');
+  }
 } else {
-console.log('=> Flux daemon:  disabled');
-}
-if ( config.zelbench_update == "1" ) {
-console.log('=> Fluxbench: enabled');
-} else {
-console.log('=> Fluxbench: disabled');
-}
-if ( config.zelflux_update == "1" ) {
-console.log('=> FluxOS:  enabled');
-} else {
-console.log('=> FluxOS:  disabled');
+  console.log(`Update settings (always enabled for non-Arcane):`);
+  console.log('=> Flux daemon:  enabled');
+  console.log('=> Fluxbench: enabled');
+  console.log('=> FluxOS:  enabled');
 }
 console.log('=================================================================');
 
@@ -620,8 +634,8 @@ async function auto_update() {
       console.log(' ');
     }
   }
-  if (config.zelflux_update == "1") {
-
+  // FluxOS auto-update (always enabled for non-Arcane, config-dependent for Arcane)
+  if (!isArcane || config.zelflux_update == "1") {
    var zelflux_remote_version = shell.exec("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json | jq -r '.version'",{ silent: true }).stdout;
    var zelflux_local_version = shell.exec(`jq -r '.version' ${fluxOsPkgFile}`,{ silent: true }).stdout;
 
@@ -640,6 +654,10 @@ async function auto_update() {
        shell.exec(`cd ${fluxOsRootDir} && git checkout . && git fetch && git pull -p`,{ silent: true }).stdout;
        await sleep(5 * 1_000);
        shell.exec(fluxOsInstallCmd,{ silent: true }).stdout;
+       await sleep(4 * 1_000);
+       if (!fs.existsSync(path.join(fluxOsRootDir, 'CloudUI'))) {
+         shell.exec(`cd ${fluxOsRootDir} && npm run update:cloudui`,{ silent: true }).stdout;
+       }
        if (isArcane) await sleep(5 * 1_000);
        shell.exec(fluxOsStartCmd,{ silent: true }).stdout;
        await sleep(20);
@@ -663,7 +681,64 @@ async function auto_update() {
     }
    }
   }
-  if (config.zelcash_update == "1") {
+  // FluxCloud UI version check (only if CloudUI is installed)
+  var cloudui_dir = path.join(fluxOsRootDir, 'CloudUI');
+  var cloudui_local_version_file = path.join(cloudui_dir, 'version');
+  if (fs.existsSync(cloudui_dir) && fs.existsSync(cloudui_local_version_file)) {
+    var cloudui_release_info = shell.exec("curl -sS -m 10 https://api.github.com/repos/RunOnFlux/fluxos-frontend/releases/latest",{ silent: true }).stdout;
+    var cloudui_remote_hash = "";
+    var cloudui_remote_tag = "";
+    var cloudui_is_master = false;
+    try {
+      var cloudui_release = JSON.parse(cloudui_release_info);
+      cloudui_is_master = cloudui_release.target_commitish === "master";
+      cloudui_remote_tag = cloudui_release.tag_name || "";
+      if (cloudui_is_master && cloudui_release.assets && cloudui_release.assets.length > 0) {
+        var dist_asset = cloudui_release.assets.find(a => a.name === "dist.tar.gz");
+        if (dist_asset && dist_asset.digest) {
+          cloudui_remote_hash = dist_asset.digest.replace("sha256:", "");
+        }
+      }
+    } catch (e) {
+      console.log('FluxCloud UI: Failed to parse release info');
+    }
+
+    var cloudui_local_hash = fs.readFileSync(cloudui_local_version_file, 'utf8').trim();
+
+    console.log(`FluxCloud UI current: ${cloudui_remote_tag} (${cloudui_remote_hash.substring(0,8) || 'N/A'}) installed: ${cloudui_local_hash.substring(0,8) || 'N/A'}`);
+    if (cloudui_is_master && cloudui_remote_hash != "" && cloudui_remote_hash !== cloudui_local_hash) {
+      component_update = 1;
+      console.log('New FluxCloud UI version detected:');
+      console.log('=================================================================');
+      console.log('Local hash: '+(cloudui_local_hash || 'N/A'));
+      console.log('Remote hash: '+cloudui_remote_hash);
+      console.log('Remote tag: '+cloudui_remote_tag);
+      console.log('=================================================================');
+      shell.exec(`cd ${fluxOsRootDir} && npm run update:cloudui`,{ silent: true }).stdout;
+      await sleep(5 * 1_000);
+      var cloudui_lv = "";
+      if (fs.existsSync(cloudui_local_version_file)) {
+        cloudui_lv = fs.readFileSync(cloudui_local_version_file, 'utf8').trim();
+      }
+      if (cloudui_remote_hash == cloudui_lv) {
+        await discord_hook(`FluxCloud UI updated!\nVersion: **${cloudui_remote_tag}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
+
+        // Update notification FluxCloud UI telegram
+        var emoji_title = '\u{23F0}';
+        var emoji_update='\u{1F504}';
+        var info_type = 'New Update '+emoji_update;
+        var field_type = 'Info: ';
+        var msg_text = "FluxCloud UI updated!\n<b>Version: </b>"+cloudui_remote_tag;
+        await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+
+        console.log('Update successfully.');
+      }
+      await sleep(20 * 1_000);
+      console.log(' ');
+    }
+  }
+  // Flux daemon auto-update (always enabled for non-Arcane, config-dependent for Arcane)
+  if (!isArcane || config.zelcash_update == "1") {
     var zelcash_remote_version = shell.exec("curl -s -m 5 https://apt.runonflux.io/pool/main/f/flux/ | grep -o '[0-9].[0-9].[0-9]' | head -n1",{ silent: true }).stdout;
     var zelcash_local_version = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
     console.log(`Flux daemon current: ${zelcash_remote_version.trim()} installed: ${zelcash_local_version.trim()}`);
@@ -711,8 +786,8 @@ async function auto_update() {
   }
  }
 
-if (config.zelbench_update == "1") {
-
+// Fluxbench auto-update (always enabled for non-Arcane, config-dependent for Arcane)
+if (!isArcane || config.zelbench_update == "1") {
  var zelbench_remote_version = shell.exec("curl -s -m 5 https://apt.runonflux.io/pool/main/f/fluxbench/ | grep -o '[0-9].[0-9].[0-9]' | head -n1",{ silent: true }).stdout;
  var zelbench_local_version = shell.exec("dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'",{ silent: true }).stdout;
 
