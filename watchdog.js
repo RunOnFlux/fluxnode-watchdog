@@ -1547,10 +1547,23 @@ async function checkArcane() {
 
 function isNumber(n) { return !isNaN(parseFloat(n)) && !isNaN(n - 0) }
 
+async function checkCloudUIOnStartup() {
+  const fluxOsPkgFile = path.join(fluxOsRootDir, "package.json");
+  const zelflux_local_version = shell.exec(`jq -r '.version' ${fluxOsPkgFile}`, { silent: true }).stdout.trim();
+  if (zelflux_local_version === '8.0.0') {
+    const cloudUIDir = path.join(fluxOsRootDir, 'CloudUI');
+    if (!fs.existsSync(cloudUIDir)) {
+      console.log('FluxOS version 8.0.0 detected and CloudUI not present. Downloading CloudUI...');
+      shell.exec(`cd ${fluxOsRootDir} && npm run update:cloudui`, { silent: true });
+      console.log('CloudUI download completed.');
+    }
+  }
+}
+
 if (isArcane) {
-  checkArcane().then(() => job_creator());
+  checkArcane().then(() => checkCloudUIOnStartup()).then(() => job_creator());
 } else {
-  job_creator();
+  checkCloudUIOnStartup().then(() => job_creator());
 }
 
 
