@@ -2,7 +2,7 @@ const { version: packageVersion } = require('./package.json');
 
 const shell = require('shelljs');
 const moment = require('moment');
-const webhook = require("@prince25/discord-webhook-sender")
+const webhook = require("@prince25/discord-webhook-sender");
 const fs = require('fs');
 const fsPromises = require('fs/promises');
 const axios = require('axios');
@@ -656,11 +656,8 @@ async function auto_update() {
        shell.exec(fluxOsInstallCmd,{ silent: true }).stdout;
        if (isArcane) await sleep(5 * 1_000);
        shell.exec(fluxOsStartCmd,{ silent: true }).stdout;
-       await sleep(4 * 1_000);
-       if (!fs.existsSync(path.join(fluxOsRootDir, 'CloudUI'))) {
-         shell.exec(`cd ${fluxOsRootDir} && npm run update:cloudui`,{ silent: true }).stdout;
-       }
        await sleep(20);
+       await checkCloudUI();
        var zelflux_lv = shell.exec(`jq -r '.version' ${fluxOsPkgFile}`,{ silent: true }).stdout;
        if ( zelflux_remote_version.trim() == zelflux_lv.trim() ) {
 
@@ -1547,13 +1544,25 @@ async function checkArcane() {
 
 function isNumber(n) { return !isNaN(parseFloat(n)) && !isNaN(n - 0) }
 
-async function checkCloudUIOnStartup() {
+function compareVersions(v1, v2) {
+  const parts1 = v1.split('.').map(Number);
+  const parts2 = v2.split('.').map(Number);
+  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+    const num1 = parts1[i] || 0;
+    const num2 = parts2[i] || 0;
+    if (num1 > num2) return 1;
+    if (num1 < num2) return -1;
+  }
+  return 0;
+}
+
+async function checkCloudUI() {
   const fluxOsPkgFile = path.join(fluxOsRootDir, "package.json");
   const zelflux_local_version = shell.exec(`jq -r '.version' ${fluxOsPkgFile}`, { silent: true }).stdout.trim();
-  if (zelflux_local_version === '8.0.0') {
+  if (zelflux_local_version && compareVersions(zelflux_local_version, '8.0.0') >= 0) {
     const cloudUIDir = path.join(fluxOsRootDir, 'CloudUI');
     if (!fs.existsSync(cloudUIDir)) {
-      console.log('FluxOS version 8.0.0 detected and CloudUI not present. Downloading CloudUI...');
+      console.log(`FluxOS version ${zelflux_local_version} detected and CloudUI not present. Downloading CloudUI...`);
       shell.exec(`cd ${fluxOsRootDir} && npm run update:cloudui`, { silent: true });
       console.log('CloudUI download completed.');
     }
@@ -1561,9 +1570,9 @@ async function checkCloudUIOnStartup() {
 }
 
 if (isArcane) {
-  checkArcane().then(() => checkCloudUIOnStartup()).then(() => job_creator());
+  checkArcane().then(() => checkCloudUI()).then(() => job_creator());
 } else {
-  checkCloudUIOnStartup().then(() => job_creator());
+  checkCloudUI().then(() => job_creator());
 }
 
 
