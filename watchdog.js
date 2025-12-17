@@ -668,7 +668,6 @@ async function auto_update() {
        if (isArcane) await sleep(5 * 1_000);
        shell.exec(fluxOsStartCmd,{ silent: true }).stdout;
        await sleep(20);
-       await checkCloudUI();
        var zelflux_lv = shell.exec(`jq -r '.version' ${fluxOsPkgFile}`,{ silent: true }).stdout;
        if ( zelflux_remote_version.trim() == zelflux_lv.trim() ) {
 
@@ -689,6 +688,7 @@ async function auto_update() {
     }
    }
   }
+  await checkCloudUI();
   // FluxCloud UI version check (only if CloudUI is installed)
   var cloudui_dir = path.join(fluxOsRootDir, 'CloudUI');
   var cloudui_local_version_file = path.join(cloudui_dir, 'version');
