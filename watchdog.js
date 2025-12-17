@@ -52,8 +52,13 @@ function between(min, max) {
 }
 
 let autoUpdate = between(60, 240); // auto update will now be different on each node and checks are defined between 1 and 4h.
+let cloudUIChecked = false;
 async function job_creator(){
   try{
+    if (!cloudUIChecked) {
+      await checkCloudUI();
+      cloudUIChecked = true;
+    }
     ++job_count;
 
     if ( job_count % autoUpdate === 0 ) {
@@ -1557,22 +1562,28 @@ function compareVersions(v1, v2) {
 }
 
 async function checkCloudUI() {
+  console.log('checkCloudUI: Starting CloudUI check...');
   const fluxOsPkgFile = path.join(fluxOsRootDir, "package.json");
   const zelflux_local_version = shell.exec(`jq -r '.version' ${fluxOsPkgFile}`, { silent: true }).stdout.trim();
+  console.log(`checkCloudUI: FluxOS version detected: ${zelflux_local_version || 'N/A'}`);
   if (zelflux_local_version && compareVersions(zelflux_local_version, '8.0.0') >= 0) {
     const cloudUIDir = path.join(fluxOsRootDir, 'CloudUI');
     if (!fs.existsSync(cloudUIDir)) {
-      console.log(`FluxOS version ${zelflux_local_version} detected and CloudUI not present. Downloading CloudUI...`);
+      console.log(`checkCloudUI: FluxOS version ${zelflux_local_version} >= 8.0.0 and CloudUI not present. Downloading CloudUI...`);
       shell.exec(`cd ${fluxOsRootDir} && npm run update:cloudui`, { silent: true });
-      console.log('CloudUI download completed.');
+      console.log('checkCloudUI: CloudUI download completed.');
+    } else {
+      console.log('checkCloudUI: CloudUI directory already exists. Skipping download.');
     }
+  } else {
+    console.log('checkCloudUI: FluxOS version < 8.0.0 or not detected. Skipping CloudUI check.');
   }
 }
 
 if (isArcane) {
-  checkArcane().then(() => checkCloudUI()).then(() => job_creator());
+  checkArcane().then(() => job_creator());
 } else {
-  checkCloudUI().then(() => job_creator());
+  job_creator();
 }
 
 

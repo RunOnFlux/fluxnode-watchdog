@@ -1,6 +1,6 @@
 {
   "name": "watchdog",
-  "version": "6.7.1",
+  "version": "6.7.2",
   "description": "Watchdog for fluxnode",
   "main": "watchdog.js",
   "dependencies": {
