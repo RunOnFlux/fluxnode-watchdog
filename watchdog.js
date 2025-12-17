@@ -600,7 +600,7 @@ async function auto_update() {
     : "pm2 start flux";
 
   const fluxWatchdogRestartCmd = isArcane
-    ? "process.exit(1)"
+    ? "systemctl restart flux-watchdog"
     : "pm2 restart watchdog --watch";
 
   const fluxOsInstallCmd = isArcane
