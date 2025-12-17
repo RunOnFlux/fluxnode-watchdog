@@ -599,6 +599,10 @@ async function auto_update() {
     ? "systemctl start fluxos.service"
     : "pm2 start flux";
 
+  const fluxWatchdogRestartCmd = isArcane
+    ? "systemctl restart flux-watchdog"
+    : "pm2 restart watchdog --watch";
+
   const fluxOsInstallCmd = isArcane
     // just use a dummy command here for non arcane
     ? `cd ${fluxOsRootDir} && npm install --omit=dev --cache /dat/usr/lib/npm`
@@ -634,6 +638,8 @@ async function auto_update() {
         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
         console.log('Update successfully.');
+        if (isArcane) await sleep(5 * 1_000);
+        shell.exec(fluxWatchdogRestartCmd,{ silent: true }).stdout;
       }
       await sleep(20 * 1_000);
       console.log(' ');
