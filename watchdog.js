@@ -59,6 +59,12 @@ async function runCommand(userCmd, options = {}) {
   if (cwd) execOptions.cwd = cwd;
   if (env) execOptions.env = { ...process.env, ...env };
 
+  // Set stdio to redirect stdin to /dev/null (ignore), while piping stdout and stderr
+  // This prevents dpkg-preconfigure from trying to read from stdin
+  if (!execOptions.stdio) {
+    execOptions.stdio = ['ignore', 'pipe', 'pipe'];
+  }
+
   try {
     const { stdout, stderr } = await execFilePromise(cmd, cmdParams, execOptions);
     res.stdout = stdout || '';
@@ -915,8 +921,8 @@ async function auto_update() {
       let zelcash_dpkg_version_before = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
       await runCommand('systemctl', { params: ['stop', fluxdServiceName], runAsRoot: true, timeout: 30000 });
       if (!isArcane) await runCommand('fuser', { params: ['-k', '16125/tcp'], runAsRoot: true, timeout: 8000, logError: false });
-      await runCommand('apt-get', { params: ['update', '-y'], runAsRoot: true, timeout: 300000, env: { DEBIAN_FRONTEND: 'noninteractive' } });
-      await runCommand('apt-get', { params: ['install', 'flux', '-y', '-o', 'Dpkg::Use-Pty=0'], runAsRoot: true, timeout: 180000, env: { DEBIAN_FRONTEND: 'noninteractive' } });
+      await runCommand('apt-get', { params: ['update', '-y'], runAsRoot: true, timeout: 300000, env: { DEBIAN_FRONTEND: 'noninteractive', DEBIAN_PRIORITY: 'critical' } });
+      await runCommand('apt-get', { params: ['install', 'flux', '-y'], runAsRoot: true, timeout: 180000, env: { DEBIAN_FRONTEND: 'noninteractive', DEBIAN_PRIORITY: 'critical' } });
       let zelcash_dpkg_version_after = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
       await sleep(2 * 1_000);
       await runCommand('systemctl', { params: ['start', fluxdServiceName], runAsRoot: true, timeout: 30000 });
@@ -975,8 +981,8 @@ if (!isArcane || config.zelbench_update == "1") {
    await runCommand('systemctl', { params: ['stop', fluxdServiceName], runAsRoot: true, timeout: 30000 });
    if (isArcane) await runCommand('systemctl', { params: ['stop', 'fluxbenchd.service'], runAsRoot: true, timeout: 30000 });
    if (!isArcane) await runCommand('fuser', { params: ['-k', '16125/tcp'], runAsRoot: true, timeout: 8000, logError: false });
-   await runCommand('apt-get', { params: ['update', '-y'], runAsRoot: true, timeout: 300000, env: { DEBIAN_FRONTEND: 'noninteractive' } });
-   await runCommand('apt-get', { params: ['install', 'fluxbench', '-y', '-o', 'Dpkg::Use-Pty=0'], runAsRoot: true, timeout: 180000, env: { DEBIAN_FRONTEND: 'noninteractive' } });
+   await runCommand('apt-get', { params: ['update', '-y'], runAsRoot: true, timeout: 300000, env: { DEBIAN_FRONTEND: 'noninteractive', DEBIAN_PRIORITY: 'critical' } });
+   await runCommand('apt-get', { params: ['install', 'fluxbench', '-y'], runAsRoot: true, timeout: 180000, env: { DEBIAN_FRONTEND: 'noninteractive', DEBIAN_PRIORITY: 'critical' } });
    await sleep(2 * 1_000);
    if (isArcane) await runCommand('systemctl', { params: ['start', 'fluxbenchd.service'], runAsRoot: true, timeout: 30000 });
    await runCommand('systemctl', { params: ['start', fluxdServiceName], runAsRoot: true, timeout: 30000 });
