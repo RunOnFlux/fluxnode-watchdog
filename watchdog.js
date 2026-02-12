@@ -759,20 +759,60 @@ async function auto_update() {
       console.log('Remote version: '+zelcash_remote_version.trim());
       var  update_info = shell.exec("ps -C apt,apt-get,dpkg >/dev/null && echo 'installing software' || echo 'all clear'",{ silent: true }).stdout;
       if ( update_info == "installing software" ) {
-
+        console.log('Flux daemon pre-update: apt/dpkg already running - killing processes...');
         shell.exec("sudo killall apt",{ silent: true }).stdout;
         shell.exec("sudo killall apt-get",{ silent: true }).stdout;
         shell.exec("sudo dpkg --configure -a",{ silent: true }).stdout;
-
+        console.log('Flux daemon pre-update: apt cleanup completed');
       }
       var zelcash_dpkg_version_before = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
+
+      // For legacy systems: prevent apt postinstall hang
+      if (!isArcane) shell.exec(`sudo systemctl mask ${fluxdServiceName}`,{ silent: true });
+
       shell.exec(`sudo systemctl stop ${fluxdServiceName}`,{ silent: true });
       if (!isArcane) shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
-      shell.exec("sudo apt-get update",{ silent: true });
-      shell.exec("sudo apt-get install flux -y",{ silent: true });
+
+      // Add timeout to prevent indefinite hang
+      if (!isArcane) {
+        shell.exec("timeout 600 sudo apt-get update -y",{ silent: true });
+        var install_result = shell.exec("timeout 300 sudo apt-get install flux -y",{ silent: true });
+
+        // Check for timeout/hang
+        if (install_result.code === 124) {
+          console.log('apt-get install TIMEOUT - killing processes...');
+          shell.exec("sudo killall apt-get apt dpkg",{ silent: true });
+          shell.exec("sudo dpkg --configure -a",{ silent: true });
+          shell.exec(`sudo systemctl unmask ${fluxdServiceName}`,{ silent: true });
+          shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true });
+          await discord_hook(`🚨 Daemon update HUNG - killed and restarted`,web_hook_url,ping,'Fix Action','#FFA500','Fixed','watchdog_fix1.png',label);
+          return;
+        }
+        shell.exec(`sudo systemctl unmask ${fluxdServiceName}`,{ silent: true });
+      } else {
+        shell.exec("sudo apt-get update",{ silent: true });
+        shell.exec("sudo apt-get install flux -y",{ silent: true });
+      }
+
       var zelcash_dpkg_version_after = shell.exec(`dpkg -l flux | grep -w flux | awk '{print $3}'`,{ silent: true }).stdout;
       await sleep(2 * 1_000);
       shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true });
+
+      // Verify update success (legacy only)
+      if (!isArcane) {
+        var service_ok = false;
+        for (let i = 0; i < 300; i++) {
+          await sleep(1 * 1_000);
+          var status = shell.exec(`sudo systemctl is-active ${fluxdServiceName}`, { silent: true }).stdout.trim();
+          if (status === 'active') {
+            service_ok = true;
+            break;
+          }
+        }
+        if (!service_ok) {
+          await discord_hook(`⚠️ Daemon update completed but service failed to start`,web_hook_url,ping,'Warning','#FF0000','Error','watchdog_error.png',label);
+        }
+      }
       if ( (zelcash_dpkg_version_before !== zelcash_dpkg_version_after) && zelcash_dpkg_version_after != "" ){
         await discord_hook(`Fluxnode daemon updated!\nVersion: **${zelcash_dpkg_version_after}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
         // Update notification daemon
@@ -814,27 +854,67 @@ if (!isArcane || config.zelbench_update == "1") {
 
      var  update_info = shell.exec("ps -C apt,apt-get,dpkg >/dev/null && echo 'installing software' || echo 'all clear'",{ silent: true }).stdout;
      if ( update_info == "installing software" ) {
-
+      console.log('Fluxbench pre-update: apt/dpkg already running - killing processes...');
       shell.exec("sudo killall apt",{ silent: true }).stdout;
       shell.exec("sudo killall apt-get",{ silent: true }).stdout;
       shell.exec("sudo dpkg --configure -a",{ silent: true }).stdout;
-
+      console.log('Fluxbench pre-update: apt cleanup completed');
      }
 
 
    var zelbench_dpkg_version_before = shell.exec(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`,{ silent: true }).stdout;
+
+   // For legacy systems: prevent apt postinstall hang
+   if (!isArcane) shell.exec(`sudo systemctl mask ${fluxdServiceName}`,{ silent: true });
+
    // For Arcane, we have to stop this as fluxd requires fluxbenchd, as it will
    // start it if it's not present. (We need to remove this from fluxd source code)
    shell.exec(`sudo systemctl stop ${fluxdServiceName}`,{ silent: true });
    if (isArcane) shell.exec("sudo systemctl stop fluxbenchd.service");
    if (!isArcane) shell.exec("sudo fuser -k 16125/tcp",{ silent: true });
-   shell.exec("sudo apt-get update",{ silent: true });
-   shell.exec("sudo apt-get install fluxbench -y",{ silent: true });
+
+   // Add timeout to prevent indefinite hang (legacy only)
+   if (!isArcane) {
+     shell.exec("timeout 600 sudo apt-get update -y",{ silent: true });
+     var bench_install_result = shell.exec("timeout 300 sudo apt-get install fluxbench -y",{ silent: true });
+
+     // Check for timeout/hang
+     if (bench_install_result.code === 124) {
+       console.log('apt-get install fluxbench TIMEOUT - killing processes...');
+       shell.exec("sudo killall apt-get apt dpkg",{ silent: true });
+       shell.exec("sudo dpkg --configure -a",{ silent: true });
+       shell.exec(`sudo systemctl unmask ${fluxdServiceName}`,{ silent: true });
+       shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true });
+       await discord_hook(`🚨 Benchmark update HUNG - killed and restarted`,web_hook_url,ping,'Fix Action','#FFA500','Fixed','watchdog_fix1.png',label);
+       return;
+     }
+     shell.exec(`sudo systemctl unmask ${fluxdServiceName}`,{ silent: true });
+   } else {
+     shell.exec("sudo apt-get update",{ silent: true });
+     shell.exec("sudo apt-get install fluxbench -y",{ silent: true });
+   }
+
    await sleep(2 * 1_000);
    if (isArcane) shell.exec("sudo systemctl start fluxbenchd.service");
    shell.exec(`sudo systemctl start ${fluxdServiceName}`,{ silent: true });
 
    var zelbench_dpkg_version_after = shell.exec(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`,{ silent: true }).stdout;
+
+   // Verify update success (legacy only)
+   if (!isArcane) {
+     var bench_service_ok = false;
+     for (let i = 0; i < 180; i++) {
+       await sleep(1 * 1_000);
+       var bench_status = shell.exec(`sudo systemctl is-active ${fluxdServiceName}`, { silent: true }).stdout.trim();
+       if (bench_status === 'active') {
+         bench_service_ok = true;
+         break;
+       }
+     }
+     if (!bench_service_ok) {
+       await discord_hook(`⚠️ Benchmark update completed but service failed to start`,web_hook_url,ping,'Warning','#FF0000','Error','watchdog_error.png',label);
+     }
+   }
 
      if ( (zelbench_dpkg_version_before !== zelbench_dpkg_version_after) && zelbench_dpkg_version_after != "" ){
 
