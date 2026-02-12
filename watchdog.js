@@ -916,7 +916,7 @@ async function auto_update() {
       await runCommand('systemctl', { params: ['stop', fluxdServiceName], runAsRoot: true, timeout: 30000 });
       if (!isArcane) await runCommand('fuser', { params: ['-k', '16125/tcp'], runAsRoot: true, timeout: 8000, logError: false });
       await runCommand('apt-get', { params: ['update', '-y'], runAsRoot: true, timeout: 300000, env: { DEBIAN_FRONTEND: 'noninteractive' } });
-      await runCommand('apt-get', { params: ['install', 'flux', '-y'], runAsRoot: true, timeout: 180000, env: { DEBIAN_FRONTEND: 'noninteractive' } });
+      await runCommand('apt-get', { params: ['install', 'flux', '-y'], runAsRoot: true, timeout: 180000, env: { DEBIAN_FRONTEND: 'noninteractive', DEBCONF_NONINTERACTIVE_SEEN: 'true' } });
       let zelcash_dpkg_version_after = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
       await sleep(2 * 1_000);
       await runCommand('systemctl', { params: ['start', fluxdServiceName], runAsRoot: true, timeout: 30000 });
@@ -976,7 +976,7 @@ if (!isArcane || config.zelbench_update == "1") {
    if (isArcane) await runCommand('systemctl', { params: ['stop', 'fluxbenchd.service'], runAsRoot: true, timeout: 30000 });
    if (!isArcane) await runCommand('fuser', { params: ['-k', '16125/tcp'], runAsRoot: true, timeout: 8000, logError: false });
    await runCommand('apt-get', { params: ['update', '-y'], runAsRoot: true, timeout: 300000, env: { DEBIAN_FRONTEND: 'noninteractive' } });
-   await runCommand('apt-get', { params: ['install', 'fluxbench', '-y'], runAsRoot: true, timeout: 180000, env: { DEBIAN_FRONTEND: 'noninteractive' } });
+   await runCommand('apt-get', { params: ['install', 'fluxbench', '-y'], runAsRoot: true, timeout: 180000, env: { DEBIAN_FRONTEND: 'noninteractive', DEBCONF_NONINTERACTIVE_SEEN: 'true' } });
    await sleep(2 * 1_000);
    if (isArcane) await runCommand('systemctl', { params: ['start', 'fluxbenchd.service'], runAsRoot: true, timeout: 30000 });
    await runCommand('systemctl', { params: ['start', fluxdServiceName], runAsRoot: true, timeout: 30000 });
