@@ -1010,12 +1010,10 @@ if (!isArcane || config.zelbench_update == "1") {
         await sleep(2 * 1_000);
      }
 
-
   }
  }
 }
 console.log('=================================================================');
-
 }
 
 async function flux_check() {
@@ -1029,7 +1027,7 @@ async function flux_check() {
 
   const fluxbenchLogPath = isArcane
     ? path.join(fluxbenchPath, 'debug.log')
-    : '/home/$USER/.fluxbenchmark/debug.log';
+    : path.join(os.homedir(), '.fluxbenchmark/debug.log');
 
   delete require.cache[require.resolve('./config.js')];
   config=require('./config.js');
@@ -1070,7 +1068,7 @@ if ( service_inactive.trim() == "inactive" ) {
 }
 
 if ( component_update == 1 ) {
-    console.log('Component update detected!');
+    console.log('System stabilization period after component update!');
     console.log('Watchdog checking skipped!');
     console.log('=================================================================');
     component_update = 0;
