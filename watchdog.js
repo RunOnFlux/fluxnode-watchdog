@@ -913,13 +913,13 @@ async function auto_update() {
 
       }
       let zelcash_dpkg_version_before = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
-      await runShellCommand(`sudo systemctl stop ${fluxdServiceName}`, { timeout: 30000 });
-      if (!isArcane) await runShellCommand("sudo fuser -k 16125/tcp", { timeout: 30000 });
-      await runShellCommand("sudo apt-get update -y", { timeout: 300000 });
-      await runShellCommand("sudo apt-get install flux -y", { timeout: 180000 });
+      await runCommand('systemctl', { params: ['stop', fluxdServiceName], runAsRoot: true, timeout: 30000 });
+      if (!isArcane) await runCommand('fuser', { params: ['-k', '16125/tcp'], runAsRoot: true, timeout: 5000 });
+      await runCommand('apt-get', { params: ['update', '-y'], runAsRoot: true, timeout: 300000 });
+      await runCommand('apt-get', { params: ['install', 'flux', '-y'], runAsRoot: true, timeout: 180000 });
       let zelcash_dpkg_version_after = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
       await sleep(2 * 1_000);
-      await runShellCommand(`sudo systemctl start ${fluxdServiceName}`, { timeout: 30000 });
+      await runCommand('systemctl', { params: ['start', fluxdServiceName], runAsRoot: true, timeout: 30000 });
       if ( (zelcash_dpkg_version_before !== zelcash_dpkg_version_after) && zelcash_dpkg_version_after != "" ){
         await discord_hook(`Fluxnode daemon updated!\nVersion: **${zelcash_dpkg_version_after}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
         // Update notification daemon
