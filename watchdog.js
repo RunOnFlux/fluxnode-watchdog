@@ -437,7 +437,7 @@ async function initializeConfig() {
     if (fs.existsSync(daemonConfigPath)) {
       const { stdout: tx_hash } = await runShellCommand(`grep -w zelnodeoutpoint "${daemonConfigPath}" | sed -e 's/zelnodeoutpoint=//'`, { timeout: 5000 });
       const exec_comment = `${daemon_cli} decoderawtransaction $(${daemon_cli} getrawtransaction ${tx_hash.trim()} ) | jq '.vout[].value' | egrep '1000|12500|40000'`;
-      const { stdout: type } = await runShellCommand(exec_comment, { timeout: 30000 });
+      const { stdout: type } = await runShellCommand(exec_comment, { timeout: 60000 });
       switch(Number(type.trim())){
         case 1000:
         tire_name="CUMULUS";
@@ -554,7 +554,7 @@ async function initializeConfig() {
     if (fs.existsSync(daemonConfigPath)) {
      const { stdout: tx_hash } = await runShellCommand(`grep -w zelnodeoutpoint "${daemonConfigPath}" | sed -e 's/zelnodeoutpoint=//'`, { timeout: 5000 });
      const exec_comment = `${daemon_cli} decoderawtransaction $(${daemon_cli} getrawtransaction ${tx_hash.trim()} ) | jq '.vout[].value' | egrep '1000|12500|40000'`;
-     const { stdout: type } = await runShellCommand(`${exec_comment}`, { timeout: 30000 });
+     const { stdout: type } = await runShellCommand(`${exec_comment}`, { timeout: 60000 });
 
      switch(Number(type.trim())){
          case 1000:
@@ -759,7 +759,7 @@ async function auto_update() {
 
   delete require.cache[require.resolve('./config.js')];
   config = require('./config.js');
-  const { stdout: remote_version } = await runShellCommand("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/fluxnode-watchdog/master/package.json | jq -r '.version'", { timeout: 10000 });
+  const { stdout: remote_version } = await runShellCommand("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/fluxnode-watchdog/master/package.json | jq -r '.version'", { timeout: 7000 });
   const { stdout: local_version } = await runShellCommand("jq -r '.version' package.json", { timeout: 5000 });
   console.log(' UPDATE CHECKING....');
   console.log('=================================================================');
@@ -771,7 +771,7 @@ async function auto_update() {
       console.log('Local version: '+local_version.trim());
       console.log('Remote version: '+remote_version.trim());
       console.log('=================================================================');
-      await runShellCommand(`cd ${watchdogPath} && git checkout . && git fetch && git pull -p`, { timeout: 60000 });
+      await runShellCommand(`cd ${watchdogPath} && git checkout . && git fetch && git pull -p`, { timeout: 120000 });
       const { stdout: local_ver } = await runShellCommand("jq -r '.version' package.json", { timeout: 5000 });
       if ( local_ver.trim() == remote_version.trim() ){
         await discord_hook(`Fluxnode Watchdog updated!\nVersion: **${remote_version}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
@@ -794,7 +794,7 @@ async function auto_update() {
   }
   // FluxOS auto-update (always enabled for non-Arcane, config-dependent for Arcane)
   if (!isArcane || config.zelflux_update == "1") {
-   const { stdout: zelflux_remote_version } = await runShellCommand("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json | jq -r '.version'", { timeout: 10000 });
+   const { stdout: zelflux_remote_version } = await runShellCommand("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/flux/master/package.json | jq -r '.version'", { timeout: 7000 });
    const { stdout: zelflux_local_version } = await runShellCommand(`jq -r '.version' ${fluxOsPkgFile}`, { timeout: 5000 });
 
    console.log(`FluxOS current: ${zelflux_remote_version.trim()} installed: ${zelflux_local_version.trim()}`);
@@ -809,7 +809,7 @@ async function auto_update() {
        console.log('=================================================================');
        await runShellCommand(fluxOsStopCmd, { timeout: 30000 });
        await sleep(5 * 1_000);
-       await runShellCommand(`cd ${fluxOsRootDir} && git checkout . && git fetch && git pull -p`, { timeout: 60000 });
+       await runShellCommand(`cd ${fluxOsRootDir} && git checkout . && git fetch && git pull -p`, { timeout: 120000 });
        await sleep(5 * 1_000);
        await runShellCommand(fluxOsInstallCmd, { timeout: 300000 });
        if (isArcane) await sleep(5 * 1_000);
@@ -840,7 +840,7 @@ async function auto_update() {
   const cloudui_dir = path.join(fluxOsRootDir, 'CloudUI');
   const cloudui_local_version_file = path.join(cloudui_dir, 'version');
   if (fs.existsSync(cloudui_dir) && fs.existsSync(cloudui_local_version_file)) {
-    let cloudui_release_info = (await runShellCommand("curl -sS -m 10 https://api.github.com/repos/RunOnFlux/fluxos-frontend/releases/latest", { timeout: 30000 })).stdout;
+    let cloudui_release_info = (await runShellCommand("curl -sS -m 10 https://api.github.com/repos/RunOnFlux/fluxos-frontend/releases/latest", { timeout: 12000 })).stdout;
     let cloudui_remote_hash = "";
     let cloudui_remote_tag = "";
     let cloudui_is_master = false;
@@ -869,7 +869,7 @@ async function auto_update() {
       console.log('Remote hash: '+cloudui_remote_hash);
       console.log('Remote tag: '+cloudui_remote_tag);
       console.log('=================================================================');
-      (await runShellCommand(`cd ${fluxOsRootDir} && npm run update:cloudui`, { timeout: 30000 })).stdout;
+      (await runShellCommand(`cd ${fluxOsRootDir} && npm run update:cloudui`, { timeout: 120000 })).stdout;
       await sleep(5 * 1_000);
       let cloudui_lv = "";
       if (fs.existsSync(cloudui_local_version_file)) {
@@ -894,7 +894,7 @@ async function auto_update() {
   }
   // Flux daemon auto-update (always enabled for non-Arcane, config-dependent for Arcane)
   if (!isArcane || config.zelcash_update == "1") {
-    let zelcash_remote_version = (await runShellCommand("curl -s -m 5 https://apt.runonflux.io/pool/main/f/flux/ | grep -o '[0-9].[0-9].[0-9]' | head -n1", { timeout: 30000 })).stdout;
+    let zelcash_remote_version = (await runShellCommand("curl -s -m 5 https://apt.runonflux.io/pool/main/f/flux/ | grep -o '[0-9].[0-9].[0-9]' | head -n1", { timeout: 7000 })).stdout;
     let zelcash_local_version = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
     console.log(`Flux daemon current: ${zelcash_remote_version.trim()} installed: ${zelcash_local_version.trim()}`);
     if ( zelcash_remote_version.trim() != "" && zelcash_local_version.trim() != "" ){
@@ -915,8 +915,8 @@ async function auto_update() {
       let zelcash_dpkg_version_before = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
       await runShellCommand(`sudo systemctl stop ${fluxdServiceName}`, { timeout: 30000 });
       if (!isArcane) await runShellCommand("sudo fuser -k 16125/tcp", { timeout: 30000 });
-      await runShellCommand("sudo apt-get update", { timeout: 30000 });
-      await runShellCommand("sudo apt-get install flux -y", { timeout: 30000 });
+      await runShellCommand("sudo apt-get update -y", { timeout: 300000 });
+      await runShellCommand("sudo apt-get install flux -y", { timeout: 180000 });
       let zelcash_dpkg_version_after = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
       await sleep(2 * 1_000);
       await runShellCommand(`sudo systemctl start ${fluxdServiceName}`, { timeout: 30000 });
@@ -943,7 +943,7 @@ async function auto_update() {
 
 // Fluxbench auto-update (always enabled for non-Arcane, config-dependent for Arcane)
 if (!isArcane || config.zelbench_update == "1") {
- let zelbench_remote_version = (await runShellCommand("curl -s -m 5 https://apt.runonflux.io/pool/main/f/fluxbench/ | grep -o '[0-9].[0-9].[0-9]' | head -n1", { timeout: 30000 })).stdout;
+ let zelbench_remote_version = (await runShellCommand("curl -s -m 5 https://apt.runonflux.io/pool/main/f/fluxbench/ | grep -o '[0-9].[0-9].[0-9]' | head -n1", { timeout: 7000 })).stdout;
  let zelbench_local_version = (await runShellCommand("dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'", { timeout: 30000 })).stdout;
 
 
@@ -975,8 +975,8 @@ if (!isArcane || config.zelbench_update == "1") {
    await runCommand('systemctl', { params: ['stop', fluxdServiceName], runAsRoot: true, timeout: 30000 });
    if (isArcane) await runCommand('systemctl', { params: ['stop', 'fluxbenchd.service'], runAsRoot: true, timeout: 30000 });
    if (!isArcane) await runCommand('fuser', { params: ['-k', '16125/tcp'], runAsRoot: true, timeout: 5000 });
-   await runCommand('apt-get', { params: ['update'], runAsRoot: true, timeout: 120000 });
-   await runCommand('apt-get', { params: ['install', 'fluxbench', '-y'], runAsRoot: true, timeout: 300000 });
+   await runCommand('apt-get', { params: ['update', '-y'], runAsRoot: true, timeout: 300000 });
+   await runCommand('apt-get', { params: ['install', 'fluxbench', '-y'], runAsRoot: true, timeout: 180000 });
    await sleep(2 * 1_000);
    if (isArcane) await runCommand('systemctl', { params: ['start', 'fluxbenchd.service'], runAsRoot: true, timeout: 30000 });
    await runCommand('systemctl', { params: ['start', fluxdServiceName], runAsRoot: true, timeout: 30000 });
@@ -1075,8 +1075,8 @@ if ( component_update == 1 ) {
 if ( zelbench_counter > 2 || zelcashd_counter > 2 || zelbench_daemon_counter > 2 ){
 
   try{
-    zelcash_height = (await runShellCommand(`${daemon_cli} getblockcount`, { timeout: 30000 })).stdout;
-    zelbench_getstatus_info = JSON.parse((await runShellCommand(`${bench_cli} getstatus`, { timeout: 30000 })).stdout);
+    zelcash_height = (await runShellCommand(`${daemon_cli} getblockcount`, { timeout: 60000 })).stdout;
+    zelbench_getstatus_info = JSON.parse((await runShellCommand(`${bench_cli} getstatus`, { timeout: 60000 })).stdout);
     zelbench_benchmark_status = zelbench_getstatus_info.benchmarking;
   } catch {
 
@@ -1125,7 +1125,7 @@ if ( zelbench_counter > 2 || zelcashd_counter > 2 || zelbench_daemon_counter > 2
 
 try{
 
-    zelbench_getstatus_info = JSON.parse((await runShellCommand(`${bench_cli} getstatus`, { timeout: 30000 })).stdout);
+    zelbench_getstatus_info = JSON.parse((await runShellCommand(`${bench_cli} getstatus`, { timeout: 60000 })).stdout);
     zelbench_status = zelbench_getstatus_info.status;
     zelback_status = zelbench_getstatus_info.zelback;
 
@@ -1139,7 +1139,7 @@ try{
 }
 
  try{
-    zelbench_getbenchmarks_info = JSON.parse((await runShellCommand(`${bench_cli} getbenchmarks`, { timeout: 30000 })).stdout);
+    zelbench_getbenchmarks_info = JSON.parse((await runShellCommand(`${bench_cli} getbenchmarks`, { timeout: 60000 })).stdout);
   //  var zelbench_ddwrite = zelbench_getbenchmarks_info.ddwrite;
     zelbench_eps = zelbench_getbenchmarks_info.eps;
     zelbench_time = zelbench_getbenchmarks_info.time;
@@ -1149,13 +1149,13 @@ try{
 }
 
 try{
-  zelcash_height = (await runShellCommand(`${daemon_cli} getblockcount`, { timeout: 30000 })).stdout;
+  zelcash_height = (await runShellCommand(`${daemon_cli} getblockcount`, { timeout: 60000 })).stdout;
 }catch {
 
 }
 
  try{
-    zelcash_getzelnodestatus_info = JSON.parse((await runShellCommand(`${daemon_cli} getzelnodestatus`, { timeout: 30000 })).stdout);
+    zelcash_getzelnodestatus_info = JSON.parse((await runShellCommand(`${daemon_cli} getzelnodestatus`, { timeout: 60000 })).stdout);
     zelcash_node_status = zelcash_getzelnodestatus_info.status
     zelcash_last_paid_height = zelcash_getzelnodestatus_info.last_paid_height
     activesince = zelcash_getzelnodestatus_info.activesince
