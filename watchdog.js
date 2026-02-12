@@ -1652,11 +1652,15 @@ function compareVersions(v1, v2) {
 
 async function checkCloudUI() {
   console.log('checkCloudUI: Starting CloudUI check...');
+  console.log(`checkCloudUI: FluxOS root dir: ${fluxOsRootDir}`);
   const cloudUIDir = path.join(fluxOsRootDir, 'CloudUI');
+  console.log(`checkCloudUI: Checking directory: ${cloudUIDir}`);
+  console.log(`checkCloudUI: Directory exists: ${fs.existsSync(cloudUIDir)}`);
   if (fs.existsSync(cloudUIDir)) {
     console.log('checkCloudUI: CloudUI directory already exists. Skipping.');
     return;
   }
+  console.log('checkCloudUI: CloudUI directory NOT found, checking FluxOS version...');
   const fluxOsPkgFile = path.join(fluxOsRootDir, "package.json");
   const zelflux_local_version = shell.exec(`jq -r '.version' ${fluxOsPkgFile}`, { silent: true }).stdout.trim();
   console.log(`checkCloudUI: FluxOS version detected: ${zelflux_local_version || 'N/A'}`);
@@ -1664,6 +1668,7 @@ async function checkCloudUI() {
     console.log(`checkCloudUI: FluxOS version ${zelflux_local_version} >= 8.0.0. Downloading CloudUI...`);
     shell.exec(`cd ${fluxOsRootDir} && npm run update:cloudui`, { silent: true });
     console.log('checkCloudUI: CloudUI download completed.');
+    console.log(`checkCloudUI: After download, directory exists: ${fs.existsSync(cloudUIDir)}`);
   } else {
     console.log('checkCloudUI: FluxOS version < 8.0.0 or not detected. Skipping CloudUI download.');
   }
