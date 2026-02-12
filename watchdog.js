@@ -602,7 +602,7 @@ async function initializeConfig() {
   console.log('Creating config file...');
   console.log("========================");
 
-  fs.writeFile(configPath, dataToWrite);
+  fs.writeFileSync(configPath, dataToWrite);
 
   config = require('./config.js');
   web_hook_url=config.web_hook_url;
