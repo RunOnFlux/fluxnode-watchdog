@@ -777,9 +777,8 @@ async function auto_update() {
 
       // Add timeout to prevent indefinite hang
       if (!isArcane) {
-        shell.exec("timeout 600 sudo apt-get update -y",{ silent: true });
-        console.log('Running apt-get install flux (showing output for debugging)...');
-        var install_result = shell.exec("timeout 300 sudo apt-get install flux -y",{ silent: false });
+        shell.exec("DEBIAN_FRONTEND=noninteractive timeout 600 sudo -E apt-get update -y",{ silent: true });
+        var install_result = shell.exec("DEBIAN_FRONTEND=noninteractive timeout 300 sudo -E apt-get install flux -y",{ silent: true });
 
         // Check for timeout/hang
         if (install_result.code === 124) {
@@ -878,9 +877,8 @@ if (!isArcane || config.zelbench_update == "1") {
 
    // Add timeout to prevent indefinite hang (legacy only)
    if (!isArcane) {
-     shell.exec("timeout 600 sudo apt-get update -y",{ silent: true });
-     console.log('Running apt-get install fluxbench (showing output for debugging)...');
-     var bench_install_result = shell.exec("timeout 300 sudo apt-get install fluxbench -y",{ silent: false });
+     shell.exec("DEBIAN_FRONTEND=noninteractive timeout 600 sudo -E apt-get update -y",{ silent: true });
+     var bench_install_result = shell.exec("DEBIAN_FRONTEND=noninteractive timeout 300 sudo -E apt-get install fluxbench -y",{ silent: true });
 
      // Check for timeout/hang
      if (bench_install_result.code === 124) {
