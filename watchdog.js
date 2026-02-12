@@ -1,5 +1,6 @@
 const { version: packageVersion } = require('./package.json');
 
+const os = require('os');
 const shell = require('shelljs');
 const moment = require('moment');
 const webhook = require("@prince25/discord-webhook-sender");
