@@ -715,7 +715,6 @@ async function auto_update() {
     var cloudui_local_hash = fs.readFileSync(cloudui_local_version_file, 'utf8').trim();
 
     console.log(`FluxCloud UI current: ${cloudui_remote_tag} (${cloudui_remote_hash.substring(0,8) || 'N/A'}) installed: ${cloudui_local_hash.substring(0,8) || 'N/A'}`);
-    console.log(`CloudUI Debug: is_master=${cloudui_is_master}, remote_hash_len=${cloudui_remote_hash.length}, local_hash_len=${cloudui_local_hash.length}, match=${cloudui_remote_hash === cloudui_local_hash}`);
     if (cloudui_is_master && cloudui_remote_hash !== "" && cloudui_remote_hash !== cloudui_local_hash) {
       component_update = 1;
       console.log('New FluxCloud UI version detected:');
@@ -1651,15 +1650,11 @@ function compareVersions(v1, v2) {
 
 async function checkCloudUI() {
   console.log('checkCloudUI: Starting CloudUI check...');
-  console.log(`checkCloudUI: FluxOS root dir: ${fluxOsRootDir}`);
   const cloudUIDir = path.join(fluxOsRootDir, 'CloudUI');
-  console.log(`checkCloudUI: Checking directory: ${cloudUIDir}`);
-  console.log(`checkCloudUI: Directory exists: ${fs.existsSync(cloudUIDir)}`);
   if (fs.existsSync(cloudUIDir)) {
     console.log('checkCloudUI: CloudUI directory already exists. Skipping.');
     return;
   }
-  console.log('checkCloudUI: CloudUI directory NOT found, checking FluxOS version...');
   const fluxOsPkgFile = path.join(fluxOsRootDir, "package.json");
   const zelflux_local_version = shell.exec(`jq -r '.version' ${fluxOsPkgFile}`, { silent: true }).stdout.trim();
   console.log(`checkCloudUI: FluxOS version detected: ${zelflux_local_version || 'N/A'}`);
@@ -1667,7 +1662,6 @@ async function checkCloudUI() {
     console.log(`checkCloudUI: FluxOS version ${zelflux_local_version} >= 8.0.0. Downloading CloudUI...`);
     shell.exec(`cd ${fluxOsRootDir} && npm run update:cloudui`, { silent: true });
     console.log('checkCloudUI: CloudUI download completed.');
-    console.log(`checkCloudUI: After download, directory exists: ${fs.existsSync(cloudUIDir)}`);
   } else {
     console.log('checkCloudUI: FluxOS version < 8.0.0 or not detected. Skipping CloudUI download.');
   }
