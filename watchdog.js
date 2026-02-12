@@ -140,6 +140,22 @@ let ping;
 let telegram_alert;
 let label;
 
+// Module-level variables for flux_check - used across try/catch blocks
+let zelcash_height;
+let zelbench_getstatus_info;
+let zelbench_benchmark_status;
+let zelbench_status;
+let zelback_status;
+let zelbench_getbenchmarks_info;
+let zelbench_eps;
+let zelbench_time;
+let zelbench_error;
+let zelcash_getzelnodestatus_info;
+let zelcash_node_status;
+let zelcash_last_paid_height;
+let activesince;
+let lastpaid;
+
 function between(min, max) {
   return Math.floor(
     Math.random() * (max - min) + min
@@ -148,6 +164,39 @@ function between(min, max) {
 
 let autoUpdate = between(60, 240); // auto update will now be different on each node and checks are defined between 1 and 4h.
 let cloudUIChecked = false;
+
+function compareVersions(v1, v2) {
+  const parts1 = v1.split('.').map(Number);
+  const parts2 = v2.split('.').map(Number);
+  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+    const num1 = parts1[i] || 0;
+    const num2 = parts2[i] || 0;
+    if (num1 > num2) return 1;
+    if (num1 < num2) return -1;
+  }
+  return 0;
+}
+
+async function checkCloudUI() {
+  console.log('checkCloudUI: Starting CloudUI check...');
+  const cloudUIDir = path.join(fluxOsRootDir, 'CloudUI');
+  if (fs.existsSync(cloudUIDir)) {
+    console.log('checkCloudUI: CloudUI directory already exists. Skipping.');
+    return;
+  }
+  const fluxOsPkgFile = path.join(fluxOsRootDir, "package.json");
+  const { stdout: zelflux_local_version } = await runShellCommand(`jq -r '.version' ${fluxOsPkgFile}`, { timeout: 5000 });
+  const version = zelflux_local_version.trim();
+  console.log(`checkCloudUI: FluxOS version detected: ${version || 'N/A'}`);
+  if (version && compareVersions(version, '8.0.0') >= 0) {
+    console.log(`checkCloudUI: FluxOS version ${version} >= 8.0.0. Downloading CloudUI...`);
+    await runShellCommand(`cd ${fluxOsRootDir} && npm run update:cloudui`, { timeout: 120000 });
+    console.log('checkCloudUI: CloudUI download completed.');
+  } else {
+    console.log('checkCloudUI: FluxOS version < 8.0.0 or not detected. Skipping CloudUI download.');
+  }
+}
+
 async function job_creator(){
   try{
     if (!cloudUIChecked) {
@@ -270,7 +319,7 @@ async function discord_hook(node_msg, web_hook_url, ping, title, color, field_na
 }
 
 function max() {
-    var args = Array.prototype.slice.call(arguments);
+    const args = Array.prototype.slice.call(arguments);
     return Math.max.apply(Math, args.filter(function(val) {
        return !isNaN(val);
     }));
@@ -306,11 +355,11 @@ async function Check_Sync(height,time) {
            await discord_hook("Flux daemon is synced!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
 
            // Sync Fixed notification telegram
-           var emoji_title = '\u{1F4A1}';
-           var emoji_fixed = '\u{2705}';
-           var info_type = 'Fixed Info '+emoji_fixed;
-           var field_type = 'Info: ';
-           var msg_text = 'Flux daemon is synced!';
+           const emoji_title = '\u{1F4A1}';
+           const emoji_fixed = '\u{2705}';
+           const info_type = 'Fixed Info '+emoji_fixed;
+           const field_type = 'Info: ';
+           const msg_text = 'Flux daemon is synced!';
            await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
         }
@@ -328,11 +377,11 @@ async function Check_Sync(height,time) {
        await discord_hook(`Flux daemon is not synced!\nDaemon height: **${height}**\nNetwork height: **${explorer_block_height}**\nDiff: **${height_diff}**`,web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
 
        // Sync problem
-       var emoji_title = '\u{1F6A8}';
-       var emoji_bell = '\u{1F514}';
-       var info_type = 'Alert '+emoji_bell;
-       var field_type = 'Error: ';
-       var msg_text = "Flux daemon is not synced! \n<b>Daemon height: </b>"+height+"\n<b>Network height: </b>"+explorer_block_height+"\n<b>Diff: </b>"+height_diff;
+       const emoji_title = '\u{1F6A8}';
+       const emoji_bell = '\u{1F514}';
+       const info_type = 'Alert '+emoji_bell;
+       const field_type = 'Error: ';
+       const msg_text = "Flux daemon is not synced! \n<b>Daemon height: </b>"+height+"\n<b>Network height: </b>"+explorer_block_height+"\n<b>Diff: </b>"+height_diff;
        await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
 
@@ -348,11 +397,11 @@ async function Check_Sync(height,time) {
          await discord_hook("Flux daemon restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
          // Fix action telegram
-         var emoji_title = '\u{26A1}';
-         var emoji_fix = '\u{1F528}';
-         var info_type = 'Fix Action '+emoji_fix;
-         var field_type = 'Info: ';
-         var msg_text = 'Flux daemon restarted!';
+         const emoji_title = '\u{26A1}';
+         const emoji_fix = '\u{1F528}';
+         const info_type = 'Fix Action '+emoji_fix;
+         const field_type = 'Info: ';
+         const msg_text = 'Flux daemon restarted!';
          await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
        }
@@ -365,8 +414,8 @@ async function Check_Sync(height,time) {
 
 async function initializeConfig() {
   if (fs.existsSync(configPath)) {
-    const { stdout: home_dir } = await runShellCommand("echo $HOME", { timeout: 5000 });
-    let daemonConfigPath = `${home_dir.trim()}/.zelcash/zelcash.conf`;
+    const home_dir = os.homedir();
+    let daemonConfigPath = `${home_dir}/.zelcash/zelcash.conf`;
     daemon_cli='zelcash-cli';
 
     if (fs.existsSync(`/usr/local/bin/flux-cli`)) {
@@ -376,7 +425,7 @@ async function initializeConfig() {
     }
 
     if (!fs.existsSync(daemonConfigPath)) {
-      daemonConfigPath = fluxdConfigPath || `${home_dir.trim()}/.flux/flux.conf`;
+      daemonConfigPath = fluxdConfigPath || `${home_dir}/.flux/flux.conf`;
      }
 
 
@@ -482,8 +531,8 @@ async function initializeConfig() {
   console.log('=================================================================');
   }
   else {
-    const { stdout: home_dir } = await runShellCommand("echo $HOME", { timeout: 5000 });
-    let daemonConfigPath = `${home_dir.trim()}/.zelcash/zelcash.conf`;
+    const home_dir = os.homedir();
+    let daemonConfigPath = `${home_dir}/.zelcash/zelcash.conf`;
     daemon_cli='zelcash-cli';
     bench_cli='zelbench-cli';
 
@@ -496,7 +545,7 @@ async function initializeConfig() {
     if (!fs.existsSync(daemonConfigPath)) {
       daemonConfigPath = isArcane
          ? fluxdConfigPath
-         : `${home_dir.trim()}/.flux/flux.conf`;
+         : `${home_dir}/.flux/flux.conf`;
      }
 
 
@@ -543,10 +592,10 @@ async function initializeConfig() {
     zelcash_update: '0',
     zelbench_update: '0',
     action: '1',
-    ping: '0';
-    web_hook_url: '0';
-    telegram_alert: '0';
-    telegram_bot_token: '0';
+    ping: '0',
+    web_hook_url: '0',
+    telegram_alert: '0',
+    telegram_bot_token: '0',
     telegram_chat_id: '0'
   }`;
 
@@ -768,17 +817,17 @@ async function auto_update() {
        if (isArcane) await sleep(5 * 1_000);
        await runShellCommand(fluxOsStartCmd, { timeout: 30000 });
        await sleep(20);
-       var zelflux_lv = (await runShellCommand(`jq -r '.version' ${fluxOsPkgFile}`, { timeout: 30000 })).stdout;
+       let zelflux_lv = (await runShellCommand(`jq -r '.version' ${fluxOsPkgFile}`, { timeout: 30000 })).stdout;
        if ( zelflux_remote_version.trim() == zelflux_lv.trim() ) {
 
          await discord_hook(`FluxOS Gravity updated!\nVersion: **${zelflux_remote_version}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
 
          // Update notification FluxOS telegram
-         var emoji_title = '\u{23F0}';
-         var emoji_update='\u{1F504}';
-         var info_type = 'New Update '+emoji_update;
-         var field_type = 'Info: ';
-         var msg_text = "FluxOS Gravity updated!\n<b>Version: </b>"+zelflux_remote_version;
+         const emoji_title = '\u{23F0}';
+         const emoji_update='\u{1F504}';
+         const info_type = 'New Update '+emoji_update;
+         const field_type = 'Info: ';
+         const msg_text = "FluxOS Gravity updated!\n<b>Version: </b>"+zelflux_remote_version;
          await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
          console.log('Update successfully.');
@@ -790,19 +839,19 @@ async function auto_update() {
   }
   await checkCloudUI();
   // FluxCloud UI version check (only if CloudUI is installed)
-  var cloudui_dir = path.join(fluxOsRootDir, 'CloudUI');
-  var cloudui_local_version_file = path.join(cloudui_dir, 'version');
+  const cloudui_dir = path.join(fluxOsRootDir, 'CloudUI');
+  const cloudui_local_version_file = path.join(cloudui_dir, 'version');
   if (fs.existsSync(cloudui_dir) && fs.existsSync(cloudui_local_version_file)) {
-    var cloudui_release_info = (await runShellCommand("curl -sS -m 10 https://api.github.com/repos/RunOnFlux/fluxos-frontend/releases/latest", { timeout: 30000 })).stdout;
-    var cloudui_remote_hash = "";
-    var cloudui_remote_tag = "";
-    var cloudui_is_master = false;
+    let cloudui_release_info = (await runShellCommand("curl -sS -m 10 https://api.github.com/repos/RunOnFlux/fluxos-frontend/releases/latest", { timeout: 30000 })).stdout;
+    let cloudui_remote_hash = "";
+    let cloudui_remote_tag = "";
+    let cloudui_is_master = false;
     try {
-      var cloudui_release = JSON.parse(cloudui_release_info);
+      const cloudui_release = JSON.parse(cloudui_release_info);
       cloudui_is_master = cloudui_release.target_commitish === "master";
       cloudui_remote_tag = cloudui_release.tag_name || "";
       if (cloudui_is_master && cloudui_release.assets && cloudui_release.assets.length > 0) {
-        var dist_asset = cloudui_release.assets.find(a => a.name === "dist.tar.gz");
+        const dist_asset = cloudui_release.assets.find(a => a.name === "dist.tar.gz");
         if (dist_asset && dist_asset.digest) {
           cloudui_remote_hash = dist_asset.digest.replace("sha256:", "");
         }
@@ -811,7 +860,7 @@ async function auto_update() {
       console.log('FluxCloud UI: Failed to parse release info');
     }
 
-    var cloudui_local_hash = fs.readFileSync(cloudui_local_version_file, 'utf8').trim();
+    const cloudui_local_hash = fs.readFileSync(cloudui_local_version_file, 'utf8').trim();
 
     console.log(`FluxCloud UI current: ${cloudui_remote_tag} (${cloudui_remote_hash.substring(0,8) || 'N/A'}) installed: ${cloudui_local_hash.substring(0,8) || 'N/A'}`);
     if (cloudui_is_master && cloudui_remote_hash != "" && cloudui_remote_hash !== cloudui_local_hash) {
@@ -824,7 +873,7 @@ async function auto_update() {
       console.log('=================================================================');
       (await runShellCommand(`cd ${fluxOsRootDir} && npm run update:cloudui`, { timeout: 30000 })).stdout;
       await sleep(5 * 1_000);
-      var cloudui_lv = "";
+      let cloudui_lv = "";
       if (fs.existsSync(cloudui_local_version_file)) {
         cloudui_lv = fs.readFileSync(cloudui_local_version_file, 'utf8').trim();
       }
@@ -832,11 +881,11 @@ async function auto_update() {
         await discord_hook(`FluxCloud UI updated!\nVersion: **${cloudui_remote_tag}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
 
         // Update notification FluxCloud UI telegram
-        var emoji_title = '\u{23F0}';
-        var emoji_update='\u{1F504}';
-        var info_type = 'New Update '+emoji_update;
-        var field_type = 'Info: ';
-        var msg_text = "FluxCloud UI updated!\n<b>Version: </b>"+cloudui_remote_tag;
+        const emoji_title = '\u{23F0}';
+        const emoji_update='\u{1F504}';
+        const info_type = 'New Update '+emoji_update;
+        const field_type = 'Info: ';
+        const msg_text = "FluxCloud UI updated!\n<b>Version: </b>"+cloudui_remote_tag;
         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
         console.log('Update successfully.');
@@ -847,8 +896,8 @@ async function auto_update() {
   }
   // Flux daemon auto-update (always enabled for non-Arcane, config-dependent for Arcane)
   if (!isArcane || config.zelcash_update == "1") {
-    var zelcash_remote_version = (await runShellCommand("curl -s -m 5 https://apt.runonflux.io/pool/main/f/flux/ | grep -o '[0-9].[0-9].[0-9]' | head -n1", { timeout: 30000 })).stdout;
-    var zelcash_local_version = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
+    let zelcash_remote_version = (await runShellCommand("curl -s -m 5 https://apt.runonflux.io/pool/main/f/flux/ | grep -o '[0-9].[0-9].[0-9]' | head -n1", { timeout: 30000 })).stdout;
+    let zelcash_local_version = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
     console.log(`Flux daemon current: ${zelcash_remote_version.trim()} installed: ${zelcash_local_version.trim()}`);
     if ( zelcash_remote_version.trim() != "" && zelcash_local_version.trim() != "" ){
       if ( zelcash_remote_version.trim() !== zelcash_local_version.trim() ){
@@ -857,7 +906,7 @@ async function auto_update() {
       console.log('=================================================================');
       console.log('Local version: '+zelcash_local_version.trim());
       console.log('Remote version: '+zelcash_remote_version.trim());
-      var  update_info = (await runShellCommand("ps -C apt,apt-get,dpkg >/dev/null && echo 'installing software' || echo 'all clear'", { timeout: 30000 })).stdout;
+      let update_info = (await runShellCommand("ps -C apt,apt-get,dpkg >/dev/null && echo 'installing software' || echo 'all clear'", { timeout: 30000 })).stdout;
       if ( update_info == "installing software" ) {
 
         (await runShellCommand("sudo killall apt", { timeout: 30000 })).stdout;
@@ -865,22 +914,22 @@ async function auto_update() {
         (await runShellCommand("sudo dpkg --configure -a", { timeout: 30000 })).stdout;
 
       }
-      var zelcash_dpkg_version_before = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
+      let zelcash_dpkg_version_before = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
       await runShellCommand(`sudo systemctl stop ${fluxdServiceName}`, { timeout: 30000 });
       if (!isArcane) await runShellCommand("sudo fuser -k 16125/tcp", { timeout: 30000 });
       await runShellCommand("sudo apt-get update", { timeout: 30000 });
       await runShellCommand("sudo apt-get install flux -y", { timeout: 30000 });
-      var zelcash_dpkg_version_after = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
+      let zelcash_dpkg_version_after = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
       await sleep(2 * 1_000);
       await runShellCommand(`sudo systemctl start ${fluxdServiceName}`, { timeout: 30000 });
       if ( (zelcash_dpkg_version_before !== zelcash_dpkg_version_after) && zelcash_dpkg_version_after != "" ){
         await discord_hook(`Fluxnode daemon updated!\nVersion: **${zelcash_dpkg_version_after}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
         // Update notification daemon
-        var emoji_title = '\u{23F0}';
-        var emoji_update='\u{1F504}';
-        var info_type = 'New Update '+emoji_update;
-        var field_type = 'Info: ';
-        var msg_text = "Fluxnode Daemon updated! \n<b>Version: </b>"+zelcash_dpkg_version_after;
+        const emoji_title = '\u{23F0}';
+        const emoji_update='\u{1F504}';
+        const info_type = 'New Update '+emoji_update;
+        const field_type = 'Info: ';
+        const msg_text = "Fluxnode Daemon updated! \n<b>Version: </b>"+zelcash_dpkg_version_after;
         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
         console.log('Update successfully.');
         console.log(' ');
@@ -896,8 +945,8 @@ async function auto_update() {
 
 // Fluxbench auto-update (always enabled for non-Arcane, config-dependent for Arcane)
 if (!isArcane || config.zelbench_update == "1") {
- var zelbench_remote_version = (await runShellCommand("curl -s -m 5 https://apt.runonflux.io/pool/main/f/fluxbench/ | grep -o '[0-9].[0-9].[0-9]' | head -n1", { timeout: 30000 })).stdout;
- var zelbench_local_version = (await runShellCommand("dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'", { timeout: 30000 })).stdout;
+ let zelbench_remote_version = (await runShellCommand("curl -s -m 5 https://apt.runonflux.io/pool/main/f/fluxbench/ | grep -o '[0-9].[0-9].[0-9]' | head -n1", { timeout: 30000 })).stdout;
+ let zelbench_local_version = (await runShellCommand("dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'", { timeout: 30000 })).stdout;
 
 
  console.log(`Fluxbench current: ${zelbench_remote_version.trim()} installed: ${zelbench_local_version.trim()}`);
@@ -912,7 +961,7 @@ if (!isArcane || config.zelbench_update == "1") {
      console.log('Remote version: '+zelbench_remote_version.trim());
      console.log('=================================================================');
 
-     var  update_info = (await runShellCommand("ps -C apt,apt-get,dpkg >/dev/null && echo 'installing software' || echo 'all clear'", { timeout: 30000 })).stdout;
+     let update_info = (await runShellCommand("ps -C apt,apt-get,dpkg >/dev/null && echo 'installing software' || echo 'all clear'", { timeout: 30000 })).stdout;
      if ( update_info == "installing software" ) {
 
       (await runShellCommand("sudo killall apt", { timeout: 30000 })).stdout;
@@ -922,7 +971,7 @@ if (!isArcane || config.zelbench_update == "1") {
      }
 
 
-   var zelbench_dpkg_version_before = (await runShellCommand(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`, { timeout: 30000 })).stdout;
+   let zelbench_dpkg_version_before = (await runShellCommand(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`, { timeout: 30000 })).stdout;
    // For Arcane, we have to stop this as fluxd requires fluxbenchd, as it will
    // start it if it's not present. (We need to remove this from fluxd source code)
    await runCommand('systemctl', { params: ['stop', fluxdServiceName], runAsRoot: true, timeout: 30000 });
@@ -934,18 +983,18 @@ if (!isArcane || config.zelbench_update == "1") {
    if (isArcane) await runCommand('systemctl', { params: ['start', 'fluxbenchd.service'], runAsRoot: true, timeout: 30000 });
    await runCommand('systemctl', { params: ['start', fluxdServiceName], runAsRoot: true, timeout: 30000 });
 
-   var zelbench_dpkg_version_after = (await runShellCommand(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`, { timeout: 30000 })).stdout;
+   let zelbench_dpkg_version_after = (await runShellCommand(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`, { timeout: 30000 })).stdout;
 
      if ( (zelbench_dpkg_version_before !== zelbench_dpkg_version_after) && zelbench_dpkg_version_after != "" ){
 
        await discord_hook(`Fluxnode benchmark updated!\nVersion: **${zelbench_dpkg_version_after}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
 
        // Update notification benchmark telegram
-       var emoji_title = '\u{23F0}';
-       var emoji_update='\u{1F504}';
-       var info_type = 'New Update '+emoji_update;
-       var field_type = 'Info: ';
-       var msg_text = "Fluxnode Benchmark updated! \n</pre><b>Version: </b>"+zelbench_dpkg_version_after;
+       const emoji_title = '\u{23F0}';
+       const emoji_update='\u{1F504}';
+       const info_type = 'New Update '+emoji_update;
+       const field_type = 'Info: ';
+       const msg_text = "Fluxnode Benchmark updated! \n</pre><b>Version: </b>"+zelbench_dpkg_version_after;
        await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
         console.log('Update successfully.');
@@ -979,7 +1028,7 @@ async function flux_check() {
     : '/home/$USER/.fluxbenchmark/debug.log';
 
   delete require.cache[require.resolve('./config.js')];
-  var config=require('./config.js');
+  const config=require('./config.js');
   web_hook_url=config.web_hook_url;
   action=config.action;
   ping=config.ping;
@@ -993,7 +1042,7 @@ async function flux_check() {
   console.log('UTC: '+data_time_utc+' | LOCAL: '+local );
   console.log('=================================================================');
 
-var  update_info = (await runShellCommand("ps -C apt,apt-get,dpkg >/dev/null && echo 'installing software' || echo 'all clear'", { timeout: 30000 })).stdout;
+let update_info = (await runShellCommand("ps -C apt,apt-get,dpkg >/dev/null && echo 'installing software' || echo 'all clear'", { timeout: 30000 })).stdout;
 if ( update_info == "installing software" ) {
   console.log('Update detected...');
   console.log('Watchdog in sleep mode => '+data_time_utc);
@@ -1008,8 +1057,8 @@ if ( service_inactive.trim() == "inactive" ) {
   ++inactive_counter;
   console.log('============================================================['+inactive_counter+']');
   if ( inactive_counter > 6 ) {
-    if (!isArcane) await runShellCommand("sudo fuser -k 16125/tcp", { timeout: 30000 })
-    await runShellCommand(`sudo systemctl start ${fluxdServiceName}`, { timeout: 30000 })
+    if (!isArcane) await runShellCommand("sudo fuser -k 16125/tcp", { timeout: 30000 });
+    await runShellCommand(`sudo systemctl start ${fluxdServiceName}`, { timeout: 30000 });
     inactive_counter=0;
    } else {
    return;
@@ -1028,9 +1077,9 @@ if ( component_update == 1 ) {
 if ( zelbench_counter > 2 || zelcashd_counter > 2 || zelbench_daemon_counter > 2 ){
 
   try{
-    var zelcash_height = (await runShellCommand(`${daemon_cli} getblockcount`, { timeout: 30000 })).stdout;
-    var zelbench_getstatus_info = JSON.parse((await runShellCommand(`${bench_cli} getstatus`, { timeout: 30000 })).stdout);
-    var zelbench_benchmark_status = zelbench_getstatus_info.benchmarking;
+    zelcash_height = (await runShellCommand(`${daemon_cli} getblockcount`, { timeout: 30000 })).stdout;
+    zelbench_getstatus_info = JSON.parse((await runShellCommand(`${bench_cli} getstatus`, { timeout: 30000 })).stdout);
+    zelbench_benchmark_status = zelbench_getstatus_info.benchmarking;
   } catch {
 
   }
@@ -1063,11 +1112,11 @@ if ( zelbench_counter > 2 || zelcashd_counter > 2 || zelbench_daemon_counter > 2
             sleep_msg=1;
             await discord_hook("Watchdog in sleep mode..\nManual operation needed!",web_hook_url,ping,'Alert','#EA1414','Info','watchdog_manual1.png',label);
           // Watchdog in sleep mode notification telegram
-            var emoji_title = '\u{1F6A8}';
-            var emoji_bell = '\u{1F514}';
-            var info_type = 'Alert '+emoji_bell;
-            var field_type = 'Info: ';
-            var msg_text = "<b>Watchdog in sleep mode!</b>\n----------------------------------------\n\u{203C} <b>Manual operation needed</b> \u{203C}";
+            const emoji_title = '\u{1F6A8}';
+            const emoji_bell = '\u{1F514}';
+            const info_type = 'Alert '+emoji_bell;
+            const field_type = 'Info: ';
+            const msg_text = "<b>Watchdog in sleep mode!</b>\n----------------------------------------\n\u{203C} <b>Manual operation needed</b> \u{203C}";
             await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
           }
 
@@ -1078,41 +1127,41 @@ if ( zelbench_counter > 2 || zelcashd_counter > 2 || zelbench_daemon_counter > 2
 
 try{
 
-    var zelbench_getstatus_info = JSON.parse((await runShellCommand(`${bench_cli} getstatus`, { timeout: 30000 })).stdout);
-    var zelbench_status = zelbench_getstatus_info.status;
-    var zelback_status = zelbench_getstatus_info.zelback;
+    zelbench_getstatus_info = JSON.parse((await runShellCommand(`${bench_cli} getstatus`, { timeout: 30000 })).stdout);
+    zelbench_status = zelbench_getstatus_info.status;
+    zelback_status = zelbench_getstatus_info.zelback;
 
     if ( typeof zelback_status  == "undefined" ){
       zelback_status = zelbench_getstatus_info.flux;
     }
-    var zelbench_benchmark_status = zelbench_getstatus_info.benchmarking;
+    zelbench_benchmark_status = zelbench_getstatus_info.benchmarking;
 
  }catch {
 
 }
 
  try{
-    var zelbench_getbenchmarks_info = JSON.parse((await runShellCommand(`${bench_cli} getbenchmarks`, { timeout: 30000 })).stdout);
+    zelbench_getbenchmarks_info = JSON.parse((await runShellCommand(`${bench_cli} getbenchmarks`, { timeout: 30000 })).stdout);
   //  var zelbench_ddwrite = zelbench_getbenchmarks_info.ddwrite;
-    var zelbench_eps = zelbench_getbenchmarks_info.eps;
-    var zelbench_time = zelbench_getbenchmarks_info.time;
-    var zelbench_error = zelbench_getbenchmarks_info.error;
+    zelbench_eps = zelbench_getbenchmarks_info.eps;
+    zelbench_time = zelbench_getbenchmarks_info.time;
+    zelbench_error = zelbench_getbenchmarks_info.error;
  }catch {
 
 }
 
 try{
-  var  zelcash_height = (await runShellCommand(`${daemon_cli} getblockcount`, { timeout: 30000 })).stdout;
+  zelcash_height = (await runShellCommand(`${daemon_cli} getblockcount`, { timeout: 30000 })).stdout;
 }catch {
 
 }
 
  try{
-    var zelcash_getzelnodestatus_info = JSON.parse((await runShellCommand(`${daemon_cli} getzelnodestatus`, { timeout: 30000 })).stdout);
-    var zelcash_node_status = zelcash_getzelnodestatus_info.status
-    var zelcash_last_paid_height = zelcash_getzelnodestatus_info.last_paid_height
-    var activesince = zelcash_getzelnodestatus_info.activesince
-    var lastpaid = zelcash_getzelnodestatus_info.lastpaid
+    zelcash_getzelnodestatus_info = JSON.parse((await runShellCommand(`${daemon_cli} getzelnodestatus`, { timeout: 30000 })).stdout);
+    zelcash_node_status = zelcash_getzelnodestatus_info.status
+    zelcash_last_paid_height = zelcash_getzelnodestatus_info.last_paid_height
+    activesince = zelcash_getzelnodestatus_info.activesince
+    lastpaid = zelcash_getzelnodestatus_info.lastpaid
  }catch {
 
 }
@@ -1130,11 +1179,11 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_height !== "undefin
      await discord_hook("Flux benchmark crash detected!",web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
 
      // Daemon crash notification telegram
-     var emoji_title = '\u{1F6A8}';
-     var emoji_bell = '\u{1F514}';
-     var info_type = 'Alert '+emoji_bell;
-     var field_type = 'Error: ';
-     var msg_text = 'Flux benchmark crash detected!';
+     const emoji_title = '\u{1F6A8}';
+     const emoji_bell = '\u{1F514}';
+     const info_type = 'Alert '+emoji_bell;
+     const field_type = 'Error: ';
+     const msg_text = 'Flux benchmark crash detected!';
      await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
      await sleep(2 * 1_000);
 
@@ -1149,11 +1198,11 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_height !== "undefin
       await discord_hook("Flux benchmark restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
       // Fix action daemon restarted notification telegram
-      var emoji_title = '\u{26A1}';
-      var emoji_fix = '\u{1F528}';
-      var info_type = 'Fix Action '+emoji_fix;
-      var field_type = 'Info: ';
-      var msg_text = 'Flux benchmark restarted!';
+      const emoji_title = '\u{26A1}';
+      const emoji_fix = '\u{1F528}';
+      const info_type = 'Fix Action '+emoji_fix;
+      const field_type = 'Info: ';
+      const msg_text = 'Flux benchmark restarted!';
       await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
    }
@@ -1165,11 +1214,11 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_height !== "undefin
 
   await discord_hook("Flux benchmark fixed!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
   //Fixed benchmark notification telegram
-  var emoji_title = '\u{1F4A1}';
-  var emoji_fixed = '\u{2705}';
-  var info_type = 'Fixed Info '+emoji_fixed;
-  var field_type = 'Info: ';
-  var msg_text = 'Flux benchmark fixed!';
+  const emoji_title = '\u{1F4A1}';
+  const emoji_fixed = '\u{2705}';
+  const info_type = 'Fixed Info '+emoji_fixed;
+  const field_type = 'Info: ';
+  const msg_text = 'Flux benchmark fixed!';
   await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
   zelbench_daemon_counter=0;
   last_failure_benchmark_time=0;
@@ -1189,11 +1238,11 @@ if (zelcash_node_status == "" || typeof zelcash_node_status == "undefined" ){
     await discord_hook('Fluxnode expired\nUTC: '+data_time_utc+'\nLOCAL: '+local,web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
 
     //Expired notification telegram
-    var emoji_title = '\u{1F6A8}';
-    var emoji_bell = '\u{1F514}';
-    var info_type = 'Alert '+emoji_bell;
-    var field_type = 'Error: ';
-    var msg_text = "Fluxnode expired! \n<b>UTC: </b>"+data_time_utc+"\n<b>LOCAL: </b>"+local;
+    const emoji_title = '\u{1F6A8}';
+    const emoji_bell = '\u{1F514}';
+    const info_type = 'Alert '+emoji_bell;
+    const field_type = 'Error: ';
+    const msg_text = "Fluxnode expired! \n<b>UTC: </b>"+data_time_utc+"\n<b>LOCAL: </b>"+local;
     await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
     }
@@ -1221,11 +1270,11 @@ if (zelback_status == "" || typeof zelback_status == "undefined"){
     await discord_hook("FluxOS disconnected!",web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
 
     // FluxOS disconnected notification telegram
-    var emoji_title = '\u{1F6A8}';
-    var emoji_bell = '\u{1F514}';
-    var info_type = 'Alert '+emoji_bell;
-    var field_type = 'Error: ';
-    var msg_text = 'FluxOS disconnected!';
+    const emoji_title = '\u{1F6A8}';
+    const emoji_bell = '\u{1F514}';
+    const info_type = 'Alert '+emoji_bell;
+    const field_type = 'Error: ';
+    const msg_text = 'FluxOS disconnected!';
     await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
     await sleep(2 * 1_000);
@@ -1243,11 +1292,11 @@ if (zelback_status == "" || typeof zelback_status == "undefined"){
         await discord_hook("FluxOS restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
         // Fix action telegram
-        var emoji_title = '\u{26A1}';
-        var emoji_fix = '\u{1F528}';
-        var info_type = 'Fix Action '+emoji_fix;
-        var field_type = 'Info: ';
-        var msg_text = 'FluxOS restarted!';
+        const emoji_title = '\u{26A1}';
+        const emoji_fix = '\u{1F528}';
+        const info_type = 'Fix Action '+emoji_fix;
+        const field_type = 'Info: ';
+        const msg_text = 'FluxOS restarted!';
         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
        }
@@ -1261,11 +1310,11 @@ if (zelback_status == "" || typeof zelback_status == "undefined"){
       await discord_hook("FluxOS connection fixed!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
 
      // FluxOS fixed notification telegram
-      var emoji_title = '\u{1F4A1}';
-      var emoji_fixed = '\u{2705}';
-      var info_type = 'Fixed Info '+emoji_fixed;
-      var field_type = 'Info: ';
-      var msg_text = 'FluxOS connection fixed!';
+      const emoji_title = '\u{1F4A1}';
+      const emoji_fixed = '\u{2705}';
+      const info_type = 'Fixed Info '+emoji_fixed;
+      const field_type = 'Info: ';
+      const msg_text = 'FluxOS connection fixed!';
       await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
     }
@@ -1295,11 +1344,11 @@ if (zelbench_benchmark_status == "" || typeof zelbench_benchmark_status == "unde
     await  discord_hook('Benchmark '+zelbench_benchmark_status+' \n**Reason:**\n'+zelbench_error,web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
 
     // Benchmark failed notification telegram
-    var emoji_title = '\u{1F6A8}';
-    var emoji_bell = '\u{1F514}';
-    var info_type = 'Alert '+emoji_bell;
-    var field_type = 'Error: ';
-    var msg_text = "Benchmark "+zelbench_benchmark_status+" \u{274C} \n<b>Reason:</b>\n"+zelbench_error;
+    const emoji_title = '\u{1F6A8}';
+    const emoji_bell = '\u{1F514}';
+    const info_type = 'Alert '+emoji_bell;
+    const field_type = 'Error: ';
+    const msg_text = "Benchmark "+zelbench_benchmark_status+" \u{274C} \n<b>Reason:</b>\n"+zelbench_error;
     await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
 
@@ -1329,7 +1378,7 @@ if (zelcash_last_paid_height  == "null" || zelcash_last_paid_height == "" || typ
 if (lastpaid == "null" || lastpaid == "" || typeof lastpaid == "undefined"){
 console.log('Last paid time = '+paid_local_time);
 } else{
-  var timestamp_paid = moment.unix(Number(lastpaid));
+  const timestamp_paid = moment.unix(Number(lastpaid));
   paid_local_time = timestamp_paid.format("DD/MM/YYYY HH:mm:ss")
   console.log('Last paid time = '+paid_local_time);
 }
@@ -1348,11 +1397,11 @@ if (typeof zelcash_height !== "undefined" && isNumber(zelcash_height) ){
     await discord_hook("Flux daemon fixed!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
 
     // Daemon fixed notification telegram
-    var emoji_title = '\u{1F4A1}';
-    var emoji_fixed = '\u{2705}';
-    var info_type = 'Fixed Info '+emoji_fixed;
-    var field_type = 'Info: ';
-    var msg_text = 'Flux daemon fixed!';
+    const emoji_title = '\u{1F4A1}';
+    const emoji_fixed = '\u{2705}';
+    const info_type = 'Fixed Info '+emoji_fixed;
+    const field_type = 'Info: ';
+    const msg_text = 'Flux daemon fixed!';
     await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
   }
@@ -1370,11 +1419,11 @@ else {
      await discord_hook("Flux daemon crash detected!",web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
 
      // Daemon crash notification telegram
-     var emoji_title = '\u{1F6A8}';
-     var emoji_bell = '\u{1F514}';
-     var info_type = 'Alert '+emoji_bell;
-     var field_type = 'Error: ';
-     var msg_text = 'Flux daemon crash detected!';
+     const emoji_title = '\u{1F6A8}';
+     const emoji_bell = '\u{1F514}';
+     const info_type = 'Alert '+emoji_bell;
+     const field_type = 'Error: ';
+     const msg_text = 'Flux daemon crash detected!';
      await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
      await sleep(2 * 1_000);
 
@@ -1389,11 +1438,11 @@ else {
       await discord_hook("Flux daemon restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
       // Fix action daemon restarted notification telegram
-      var emoji_title = '\u{26A1}';
-      var emoji_fix = '\u{1F528}';
-      var info_type = 'Fix Action '+emoji_fix;
-      var field_type = 'Info: ';
-      var msg_text = 'Flux daemon restarted!';
+      const emoji_title = '\u{26A1}';
+      const emoji_fix = '\u{1F528}';
+      const info_type = 'Fix Action '+emoji_fix;
+      const field_type = 'Info: ';
+      const msg_text = 'Flux daemon restarted!';
       await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
    }
@@ -1410,11 +1459,11 @@ if ( mongod_counter == "1" ){
   await discord_hook("MongoDB crash detected!",web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
 
   // MongoDB crash notification telegram
-  var emoji_title = '\u{1F6A8}';
-  var emoji_bell = '\u{1F514}';
-  var info_type = 'Alert '+emoji_bell;
-  var field_type = 'Error: ';
-  var msg_text = 'MongoDB crash detected!';
+  const emoji_title = '\u{1F6A8}';
+  const emoji_bell = '\u{1F514}';
+  const info_type = 'Alert '+emoji_bell;
+  const field_type = 'Error: ';
+  const msg_text = 'MongoDB crash detected!';
   await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
   await sleep(2 * 1_000);
@@ -1424,15 +1473,15 @@ if ( mongod_counter == "1" ){
       if ( typeof action  == "undefined" || action == "1" ){
 
           console.log(data_time_utc+' => MongoDB restarting...');
-          await runShellCommand("sudo systemctl restart mongod", { timeout: 30000 })
+          await runShellCommand("sudo systemctl restart mongod", { timeout: 30000 });
           await discord_hook("MongoDB restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
           // Fix action mongodb notification telegram
-          var emoji_title = '\u{26A1}';
-          var emoji_fix = '\u{1F528}';
-          var info_type = 'Fix Action '+emoji_fix;
-          var field_type = 'Info: ';
-          var msg_text = 'MongoDB restarted!';
+          const emoji_title = '\u{26A1}';
+          const emoji_fix = '\u{1F528}';
+          const info_type = 'Fix Action '+emoji_fix;
+          const field_type = 'Info: ';
+          const msg_text = 'MongoDB restarted!';
           await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
       }
@@ -1446,11 +1495,11 @@ return;
   await discord_hook("MongoDB connection fixed!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
 
   // Fixed notification mongodb telegram
-  var emoji_title = '\u{1F4A1}';
-  var emoji_fixed = '\u{2705}';
-  var info_type = 'Fixed Info '+emoji_fixed;
-  var field_type = 'Info: ';
-  var msg_text = 'MongoDB connection fixed!';
+  const emoji_title = '\u{1F4A1}';
+  const emoji_fixed = '\u{2705}';
+  const info_type = 'Fixed Info '+emoji_fixed;
+  const field_type = 'Info: ';
+  const msg_text = 'MongoDB connection fixed!';
   await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 
  }
@@ -1462,7 +1511,7 @@ if ( zelbench_benchmark_status == "toaster" || zelbench_benchmark_status == "fai
   if (zelbench_time && Number(zelbench_time) > last_failure_benchmark_time) {
     ++zelbench_counter;
     last_failure_benchmark_time = Number(zelbench_time);
-    var error_line=await runShellCommand(`egrep -a --color 'Failed' ${fluxbenchLogPath} | tail -1 | sed 's/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.//'`, { timeout: 30000 });
+    const { stdout: error_line } = await runShellCommand(`egrep -a --color 'Failed' ${fluxbenchLogPath} | tail -1 | sed 's/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.//'`, { timeout: 30000 });
     error('Benchmark problem detected! Fluxbench status: '+zelbench_benchmark_status);
     error('Reason: '+error_line.trim());
     console.log('Benchmark problem detected! Fluxbench status: '+zelbench_benchmark_status);
@@ -1473,11 +1522,11 @@ if ( zelbench_benchmark_status == "toaster" || zelbench_benchmark_status == "fai
       await discord_hook("Benchmark restart scheduled!\nBenchmarks will be restarted in the next few minutes.",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
       // Fix action benchmark notification telegram
-      var emoji_title = '\u{26A1}';
-      var emoji_fix = '\u{1F528}';
-      var info_type = 'Fix Action '+emoji_fix;
-      var field_type = 'Info: ';
-      var msg_text = 'Benchmark restart scheduled! Benchmarks will be restarted in the next few minutes.';
+      const emoji_title = '\u{26A1}';
+      const emoji_fix = '\u{1F528}';
+      const info_type = 'Fix Action '+emoji_fix;
+      const field_type = 'Info: ';
+      const msg_text = 'Benchmark restart scheduled! Benchmarks will be restarted in the next few minutes.';
       await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
     }
   }
@@ -1486,11 +1535,11 @@ else if ( zelbench_counter != 0 && ["CUMULUS", "NIMBUS", "STRATUS"].includes(zel
   await discord_hook("Flux benchmark fixed!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
 
   //Fixed benchmark notification telegram
-  var emoji_title = '\u{1F4A1}';
-  var emoji_fixed = '\u{2705}';
-  var info_type = 'Fixed Info '+emoji_fixed;
-  var field_type = 'Info: ';
-  var msg_text = 'Flux benchmark fixed!';
+  const emoji_title = '\u{1F4A1}';
+  const emoji_fixed = '\u{2705}';
+  const info_type = 'Fixed Info '+emoji_fixed;
+  const field_type = 'Info: ';
+  const msg_text = 'Flux benchmark fixed!';
   await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
   zelbench_counter=0;
   last_failure_benchmark_time=0;
@@ -1499,7 +1548,7 @@ else if ( zelbench_counter != 0 && ["CUMULUS", "NIMBUS", "STRATUS"].includes(zel
 
 
 delete require.cache[require.resolve('./config.js')];
-var config = require('./config.js');
+const config = require('./config.js');
 
 if (config.tier_eps_min != "" && config.tier_eps_min != "0" && zelbench_eps != "" && zelbench_eps < config.tier_eps_min ){
 // Only act if this is a new benchmark failure (zelbench_time is newer than last failure)
@@ -1516,11 +1565,11 @@ if (zelbench_time && Number(zelbench_time) > last_failure_benchmark_time) {
       await discord_hook("Benchmark restart scheduled!\nBenchmarks will be restarted in the next few minutes.",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
       // Fix action benchmark notification telegram
-      var emoji_title = '\u{26A1}';
-      var emoji_fix = '\u{1F528}';
-      var info_type = 'Fix Action '+emoji_fix;
-      var field_type = 'Info: ';
-      var msg_text = 'Benchmark restart scheduled! Benchmarks will be restarted in the next few minutes.';
+      const emoji_title = '\u{26A1}';
+      const emoji_fix = '\u{1F528}';
+      const info_type = 'Fix Action '+emoji_fix;
+      const field_type = 'Info: ';
+      const msg_text = 'Benchmark restart scheduled! Benchmarks will be restarted in the next few minutes.';
       await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
     }
   }
@@ -1531,7 +1580,7 @@ tire_lock=0;
 last_failure_benchmark_time=0;
 }
  if ( zelcash_height != "" && typeof zelcash_height !== "undefined" && isNumber(zelcash_height) ){
-   var skip_sync=between(1, 4);
+   const skip_sync=between(1, 4);
    if ( skip_sync > 2 ) {
      await Check_Sync(zelcash_height,data_time_utc);
    } else {
@@ -1654,37 +1703,6 @@ async function checkArcane() {
 }
 
 function isNumber(n) { return !isNaN(parseFloat(n)) && !isNaN(n - 0) }
-
-function compareVersions(v1, v2) {
-  const parts1 = v1.split('.').map(Number);
-  const parts2 = v2.split('.').map(Number);
-  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
-    const num1 = parts1[i] || 0;
-    const num2 = parts2[i] || 0;
-    if (num1 > num2) return 1;
-    if (num1 < num2) return -1;
-  }
-  return 0;
-}
-
-async function checkCloudUI() {
-  console.log('checkCloudUI: Starting CloudUI check...');
-  const cloudUIDir = path.join(fluxOsRootDir, 'CloudUI');
-  if (fs.existsSync(cloudUIDir)) {
-    console.log('checkCloudUI: CloudUI directory already exists. Skipping.');
-    return;
-  }
-  const fluxOsPkgFile = path.join(fluxOsRootDir, "package.json");
-  const zelflux_local_version = (await runShellCommand(`jq -r '.version' ${fluxOsPkgFile}`, { timeout: 30000 })).stdout.trim();
-  console.log(`checkCloudUI: FluxOS version detected: ${zelflux_local_version || 'N/A'}`);
-  if (zelflux_local_version && compareVersions(zelflux_local_version, '8.0.0') >= 0) {
-    console.log(`checkCloudUI: FluxOS version ${zelflux_local_version} >= 8.0.0. Downloading CloudUI...`);
-    await runShellCommand(`cd ${fluxOsRootDir} && npm run update:cloudui`, { timeout: 30000 });
-    console.log('checkCloudUI: CloudUI download completed.');
-  } else {
-    console.log('checkCloudUI: FluxOS version < 8.0.0 or not detected. Skipping CloudUI download.');
-  }
-}
 
 // Main entry point
 async function main() {
