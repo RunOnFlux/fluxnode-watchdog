@@ -714,7 +714,8 @@ async function auto_update() {
     var cloudui_local_hash = fs.readFileSync(cloudui_local_version_file, 'utf8').trim();
 
     console.log(`FluxCloud UI current: ${cloudui_remote_tag} (${cloudui_remote_hash.substring(0,8) || 'N/A'}) installed: ${cloudui_local_hash.substring(0,8) || 'N/A'}`);
-    if (cloudui_is_master && cloudui_remote_hash != "" && cloudui_remote_hash !== cloudui_local_hash) {
+    console.log(`CloudUI Debug: is_master=${cloudui_is_master}, remote_hash_len=${cloudui_remote_hash.length}, local_hash_len=${cloudui_local_hash.length}, match=${cloudui_remote_hash === cloudui_local_hash}`);
+    if (cloudui_is_master && cloudui_remote_hash !== "" && cloudui_remote_hash !== cloudui_local_hash) {
       component_update = 1;
       console.log('New FluxCloud UI version detected:');
       console.log('=================================================================');
