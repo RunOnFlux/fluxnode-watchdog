@@ -178,10 +178,8 @@ function compareVersions(v1, v2) {
 }
 
 async function checkCloudUI() {
-  console.log('checkCloudUI: Starting CloudUI check...');
   const cloudUIDir = path.join(fluxOsRootDir, 'CloudUI');
   if (fs.existsSync(cloudUIDir)) {
-    console.log('checkCloudUI: CloudUI directory already exists. Skipping.');
     return;
   }
   const fluxOsPkgFile = path.join(fluxOsRootDir, "package.json");
