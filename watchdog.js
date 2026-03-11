@@ -1013,6 +1013,22 @@ console.log('=================================================================')
 }
 
 async function flux_check() {
+  // Reset per-cycle variables to prevent stale values from previous cycle
+  zelcash_height = undefined;
+  zelbench_getstatus_info = undefined;
+  zelbench_benchmark_status = undefined;
+  zelbench_status = undefined;
+  zelback_status = undefined;
+  zelbench_getbenchmarks_info = undefined;
+  zelbench_eps = undefined;
+  zelbench_time = undefined;
+  zelbench_error = undefined;
+  zelcash_getzelnodestatus_info = undefined;
+  zelcash_node_status = undefined;
+  zelcash_last_paid_height = undefined;
+  activesince = undefined;
+  lastpaid = undefined;
+
   const fluxbenchServiceName = isArcane
   ? "fluxbenchd.service"
   : "zelcash.service";
