@@ -824,15 +824,17 @@ async function auto_update() {
        let zelflux_lv = (await runShellCommand(`jq -r '.version' ${fluxOsPkgFile}`, { timeout: 30000 })).stdout;
        if ( zelflux_remote_version.trim() == zelflux_lv.trim() ) {
 
-         await discord_hook(`FluxOS Gravity updated!\nVersion: **${zelflux_remote_version}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
+         if (zelflux_remote_version.trim().endsWith('.0')) {
+           await discord_hook(`FluxOS Gravity updated!\nVersion: **${zelflux_remote_version}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
 
-         // Update notification FluxOS telegram
-         const emoji_title = '\u{23F0}';
-         const emoji_update='\u{1F504}';
-         const info_type = 'New Update '+emoji_update;
-         const field_type = 'Info: ';
-         const msg_text = "FluxOS Gravity updated!\n<b>Version: </b>"+zelflux_remote_version;
-         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+           // Update notification FluxOS telegram
+           const emoji_title = '\u{23F0}';
+           const emoji_update='\u{1F504}';
+           const info_type = 'New Update '+emoji_update;
+           const field_type = 'Info: ';
+           const msg_text = "FluxOS Gravity updated!\n<b>Version: </b>"+zelflux_remote_version;
+           await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+         }
 
          console.log('Update successfully.');
         }
@@ -882,16 +884,6 @@ async function auto_update() {
         cloudui_lv = fs.readFileSync(cloudui_local_version_file, 'utf8').trim();
       }
       if (cloudui_remote_hash == cloudui_lv) {
-        await discord_hook(`FluxCloud UI updated!\nVersion: **${cloudui_remote_tag}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
-
-        // Update notification FluxCloud UI telegram
-        const emoji_title = '\u{23F0}';
-        const emoji_update='\u{1F504}';
-        const info_type = 'New Update '+emoji_update;
-        const field_type = 'Info: ';
-        const msg_text = "FluxCloud UI updated!\n<b>Version: </b>"+cloudui_remote_tag;
-        await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
-
         console.log('Update successfully.');
       }
       await sleep(20 * 1_000);
@@ -927,14 +919,16 @@ async function auto_update() {
       await sleep(2 * 1_000);
       await runCommand('systemctl', { params: ['start', fluxdServiceName], runAsRoot: true, timeout: 30000 });
       if ( (zelcash_dpkg_version_before !== zelcash_dpkg_version_after) && zelcash_dpkg_version_after != "" ){
-        await discord_hook(`Fluxnode daemon updated!\nVersion: **${zelcash_dpkg_version_after}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
-        // Update notification daemon
-        const emoji_title = '\u{23F0}';
-        const emoji_update='\u{1F504}';
-        const info_type = 'New Update '+emoji_update;
-        const field_type = 'Info: ';
-        const msg_text = "Fluxnode Daemon updated! \n<b>Version: </b>"+zelcash_dpkg_version_after;
-        await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+        if (zelcash_dpkg_version_after.trim().endsWith('.0')) {
+          await discord_hook(`Fluxnode daemon updated!\nVersion: **${zelcash_dpkg_version_after}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
+          // Update notification daemon
+          const emoji_title = '\u{23F0}';
+          const emoji_update='\u{1F504}';
+          const info_type = 'New Update '+emoji_update;
+          const field_type = 'Info: ';
+          const msg_text = "Fluxnode Daemon updated! \n<b>Version: </b>"+zelcash_dpkg_version_after;
+          await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+        }
         console.log('Update successfully.');
         console.log(' ');
         await sleep(2 * 1_000);
@@ -991,15 +985,17 @@ if (!isArcane || config.zelbench_update == "1") {
 
      if ( (zelbench_dpkg_version_before !== zelbench_dpkg_version_after) && zelbench_dpkg_version_after != "" ){
 
-       await discord_hook(`Fluxnode benchmark updated!\nVersion: **${zelbench_dpkg_version_after}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
+       if (zelbench_dpkg_version_after.trim().endsWith('.0')) {
+         await discord_hook(`Fluxnode benchmark updated!\nVersion: **${zelbench_dpkg_version_after}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
 
-       // Update notification benchmark telegram
-       const emoji_title = '\u{23F0}';
-       const emoji_update='\u{1F504}';
-       const info_type = 'New Update '+emoji_update;
-       const field_type = 'Info: ';
-       const msg_text = "Fluxnode Benchmark updated! \n</pre><b>Version: </b>"+zelbench_dpkg_version_after;
-       await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+         // Update notification benchmark telegram
+         const emoji_title = '\u{23F0}';
+         const emoji_update='\u{1F504}';
+         const info_type = 'New Update '+emoji_update;
+         const field_type = 'Info: ';
+         const msg_text = "Fluxnode Benchmark updated! \n</pre><b>Version: </b>"+zelbench_dpkg_version_after;
+         await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
+       }
 
         console.log('Update successfully.');
         console.log(' ');
