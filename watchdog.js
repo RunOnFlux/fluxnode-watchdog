@@ -183,6 +183,25 @@ function compareVersions(v1, v2) {
   return 0;
 }
 
+// The CloudUI fetch takes the API host as an argument rather than knowing one. FluxOS
+// holds the single value every node reaches, so it is read from there instead of being
+// repeated here, where a second copy would be a second thing to change.
+//
+// Returns null when it cannot be read, so the caller skips the fetch rather than running
+// a command that is certain to fail.
+function cloudUiApiBaseUrl() {
+  try {
+    // eslint-disable-next-line global-require, import/no-dynamic-require
+    const fluxOsConfig = require(path.join(fluxOsRootDir, 'ZelBack', 'config', 'default.js'));
+
+    return (fluxOsConfig.github && fluxOsConfig.github.apiBaseUrl) || null;
+  } catch (error) {
+    console.log(`cloudUiApiBaseUrl: could not read the API host from FluxOS config: ${error.message}`);
+
+    return null;
+  }
+}
+
 async function checkCloudUI() {
   const cloudUIDir = path.join(fluxOsRootDir, 'CloudUI');
   if (fs.existsSync(cloudUIDir)) {
@@ -193,8 +212,14 @@ async function checkCloudUI() {
   const version = zelflux_local_version.trim();
   console.log(`checkCloudUI: FluxOS version detected: ${version || 'N/A'}`);
   if (version && compareVersions(version, '8.0.0') >= 0) {
+    const apiBaseUrl = cloudUiApiBaseUrl();
+    if (!apiBaseUrl) {
+      console.log('checkCloudUI: no API host available, skipping the CloudUI download.');
+
+      return;
+    }
     console.log(`checkCloudUI: FluxOS version ${version} >= 8.0.0. Downloading CloudUI...`);
-    await runShellCommand(`cd ${fluxOsRootDir} && npm run update:cloudui`, { timeout: 120000 });
+    await runShellCommand(`cd ${fluxOsRootDir} && npm run update:cloudui -- ${apiBaseUrl}`, { timeout: 120000 });
     console.log('checkCloudUI: CloudUI download completed.');
   } else {
     console.log('checkCloudUI: FluxOS version < 8.0.0 or not detected. Skipping CloudUI download.');
@@ -877,7 +902,12 @@ async function auto_update() {
       console.log('Remote hash: '+cloudui_remote_hash);
       console.log('Remote tag: '+cloudui_remote_tag);
       console.log('=================================================================');
-      (await runShellCommand(`cd ${fluxOsRootDir} && npm run update:cloudui`, { timeout: 120000 })).stdout;
+      const cloudui_api_base_url = cloudUiApiBaseUrl();
+      if (!cloudui_api_base_url) {
+        console.log('No API host available, skipping the FluxCloud UI update.');
+      } else {
+        (await runShellCommand(`cd ${fluxOsRootDir} && npm run update:cloudui -- ${cloudui_api_base_url}`, { timeout: 120000 })).stdout;
+      }
       await sleep(5 * 1_000);
       let cloudui_lv = "";
       if (fs.existsSync(cloudui_local_version_file)) {
