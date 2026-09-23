@@ -823,7 +823,7 @@ async function auto_update() {
   console.log('=================================================================');
   console.log(`Watchdog current: ${remote_version.trim()} installed: ${local_version.trim()}`);
   if ( remote_version.trim() != "" && local_version.trim() != "" ){
-    if ( remote_version.trim() !== local_version.trim()){
+    if ( compareVersions(remote_version, local_version) > 0 ){
       console.log('New watchdog version detected:');
       console.log('=================================================================');
       console.log('Local version: '+local_version.trim());
