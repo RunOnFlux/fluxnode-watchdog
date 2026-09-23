@@ -858,23 +858,39 @@ async function auto_update() {
    console.log(`FluxOS current: ${zelflux_remote_version.trim()} installed: ${zelflux_local_version.trim()}`);
    if ( zelflux_remote_version.trim() != "" && zelflux_local_version.trim() != "" ){
 
-     if ( zelflux_remote_version.trim() !== zelflux_local_version.trim() ){
-       component_update = 1;
+     if ( compareVersions(zelflux_remote_version, zelflux_local_version) > 0 ){
        console.log('New FluxOS version detected:');
        console.log('=================================================================');
        console.log('Local version: '+zelflux_local_version.trim());
        console.log('Remote version: '+zelflux_remote_version.trim());
        console.log('=================================================================');
-       await runShellCommand(fluxOsStopCmd, { timeout: 30000 });
-       await sleep(5 * 1_000);
-       await runShellCommand(`cd ${fluxOsRootDir} && git checkout . && git fetch && git pull -p`, { timeout: 120000 });
-       await sleep(5 * 1_000);
-       await runShellCommand(fluxOsInstallCmd, { timeout: 300000 });
-       if (isArcane) await sleep(5 * 1_000);
-       await runShellCommand(fluxOsStartCmd, { timeout: 30000 });
-       await sleep(20);
-       let zelflux_lv = (await runShellCommand(`jq -r '.version' ${fluxOsPkgFile}`, { timeout: 30000 })).stdout;
-       if ( zelflux_remote_version.trim() == zelflux_lv.trim() ) {
+       // Fetch while FluxOS is still running: it is stopped only when the
+       // branch it is on has new commits to install.
+       const git = `git -C ${fluxOsRootDir}`;
+       const { error: fetchError } = await runShellCommand(`${git} fetch`, { timeout: 120000 });
+       const { stdout: head_before } = await runShellCommand(`${git} rev-parse HEAD`, { timeout: 5000 });
+       const { stdout: upstream } = await runShellCommand(`${git} rev-parse @{u}`, { timeout: 5000 });
+       if (fetchError || !upstream.trim() || upstream.trim() === head_before.trim()) {
+         console.log(fetchError
+           ? 'FluxOS update skipped: fetch failed'
+           : 'FluxOS update skipped: nothing new on this branch');
+       } else {
+         component_update = 1;
+         await runShellCommand(fluxOsStopCmd, { timeout: 30000 });
+         await sleep(5 * 1_000);
+         await runShellCommand(`cd ${fluxOsRootDir} && git checkout . && git pull -p`, { timeout: 120000 });
+         const { stdout: head_after } = await runShellCommand(`${git} rev-parse HEAD`, { timeout: 5000 });
+         if (head_after.trim() !== head_before.trim()) {
+           await sleep(5 * 1_000);
+           await runShellCommand(fluxOsInstallCmd, { timeout: 300000 });
+         } else {
+           console.log('FluxOS update failed: pull did not move HEAD, restarting the installed version');
+         }
+         if (isArcane) await sleep(5 * 1_000);
+         await runShellCommand(fluxOsStartCmd, { timeout: 30000 });
+         await sleep(20 * 1_000);
+         let zelflux_lv = (await runShellCommand(`jq -r '.version' ${fluxOsPkgFile}`, { timeout: 30000 })).stdout;
+         if ( zelflux_remote_version.trim() == zelflux_lv.trim() ) {
 
          if (zelflux_remote_version.trim().endsWith('.0')) {
            await discord_hook(`FluxOS Gravity updated!\nVersion: **${zelflux_remote_version}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
@@ -889,8 +905,9 @@ async function auto_update() {
          }
 
          console.log('Update successfully.');
-        }
-       await sleep(20 * 1_000);
+          }
+         await sleep(20 * 1_000);
+       }
        console.log(' ');
     }
    }
