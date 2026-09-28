@@ -1291,9 +1291,10 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_height !== "undefin
 
    if ( typeof action  == "undefined" || action == "1" ){
       if (isArcane) {
-        // fluxos.service requires fluxbenchd.service: a restart restarts FluxOS
-        // with it, where a stop followed by a start leaves FluxOS stopped.
+        // fluxos.service requires fluxbenchd.service, so FluxOS is down whenever
+        // fluxbenchd has been stopped, and starting fluxbenchd does not start it.
         await runShellCommand(`sudo systemctl restart ${fluxbenchServiceName}`, { timeout: 30000 });
+        await runShellCommand("sudo systemctl start fluxos.service", { timeout: 30000 });
       } else {
         await runShellCommand(`sudo systemctl stop ${fluxbenchServiceName}`, { timeout: 30000 });
         await sleep(2 * 1_000);
