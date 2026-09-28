@@ -137,6 +137,18 @@ let last_failure_benchmark_time=0;
 // Module-level variables for config - will be set during initialization
 let daemon_cli;
 let bench_cli;
+
+// A fluxbenchd that serves its RPC on unix sockets binds no TCP listener; one
+// that does not serves TCP only. The status socket exists only while the first
+// kind is running, so its presence picks the transport. The watchdog only reads
+// status, which is all this socket allows.
+const FLUXBENCH_STATUS_SOCKET = '/run/fluxbenchd/status.sock';
+
+function benchStatusCli() {
+  return fs.existsSync(FLUXBENCH_STATUS_SOCKET)
+    ? `${bench_cli} -rpcunixsocket=${FLUXBENCH_STATUS_SOCKET}`
+    : bench_cli;
+}
 let tire_name;
 let config;
 let eps_limit;
@@ -1166,7 +1178,7 @@ if ( zelbench_counter > 2 || zelcashd_counter > 2 || zelbench_daemon_counter > 2
 
   try{
     zelcash_height = (await runShellCommand(`${daemon_cli} getblockcount`, { timeout: 60000 })).stdout;
-    zelbench_getstatus_info = JSON.parse((await runShellCommand(`${bench_cli} getstatus`, { timeout: 60000 })).stdout);
+    zelbench_getstatus_info = JSON.parse((await runShellCommand(`${benchStatusCli()} getstatus`, { timeout: 60000 })).stdout);
     zelbench_benchmark_status = zelbench_getstatus_info.benchmarking;
   } catch {
 
@@ -1215,7 +1227,7 @@ if ( zelbench_counter > 2 || zelcashd_counter > 2 || zelbench_daemon_counter > 2
 
 try{
 
-    zelbench_getstatus_info = JSON.parse((await runShellCommand(`${bench_cli} getstatus`, { timeout: 60000 })).stdout);
+    zelbench_getstatus_info = JSON.parse((await runShellCommand(`${benchStatusCli()} getstatus`, { timeout: 60000 })).stdout);
     zelbench_status = zelbench_getstatus_info.status;
     zelback_status = zelbench_getstatus_info.zelback;
 
@@ -1229,7 +1241,7 @@ try{
 }
 
  try{
-    zelbench_getbenchmarks_info = JSON.parse((await runShellCommand(`${bench_cli} getbenchmarks`, { timeout: 60000 })).stdout);
+    zelbench_getbenchmarks_info = JSON.parse((await runShellCommand(`${benchStatusCli()} getbenchmarks`, { timeout: 60000 })).stdout);
   //  var zelbench_ddwrite = zelbench_getbenchmarks_info.ddwrite;
     zelbench_eps = zelbench_getbenchmarks_info.eps;
     zelbench_time = zelbench_getbenchmarks_info.time;
@@ -1278,10 +1290,16 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_height !== "undefin
    }
 
    if ( typeof action  == "undefined" || action == "1" ){
-      await runShellCommand(`sudo systemctl stop ${fluxbenchServiceName}`, { timeout: 30000 });
-      await sleep(2 * 1_000);
-      if (!isArcane) await runShellCommand("sudo fuser -k 16125/tcp", { timeout: 30000 });
-      await runShellCommand(`sudo systemctl start ${fluxbenchServiceName}`, { timeout: 30000 });
+      if (isArcane) {
+        // fluxos.service requires fluxbenchd.service: a restart restarts FluxOS
+        // with it, where a stop followed by a start leaves FluxOS stopped.
+        await runShellCommand(`sudo systemctl restart ${fluxbenchServiceName}`, { timeout: 30000 });
+      } else {
+        await runShellCommand(`sudo systemctl stop ${fluxbenchServiceName}`, { timeout: 30000 });
+        await sleep(2 * 1_000);
+        await runShellCommand("sudo fuser -k 16125/tcp", { timeout: 30000 });
+        await runShellCommand(`sudo systemctl start ${fluxbenchServiceName}`, { timeout: 30000 });
+      }
       console.log(data_time_utc+' => Flux benchmark restarting...');
       await discord_hook("Flux benchmark restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
