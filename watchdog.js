@@ -9,6 +9,7 @@ const fs = require('fs');
 const fsPromises = require('fs/promises');
 const axios = require('axios');
 const path = require('node:path');
+const { fluxdState } = require('./fluxd_state');
 
 const execFilePromise = promisify(execFile);
 
@@ -160,6 +161,7 @@ let label;
 
 // Module-level variables for flux_check - used across try/catch blocks
 let zelcash_height;
+let fluxd_state;
 let zelbench_getstatus_info;
 let zelbench_benchmark_status;
 let zelbench_status;
@@ -1101,6 +1103,7 @@ console.log('=================================================================')
 async function flux_check() {
   // Reset per-cycle variables to prevent stale values from previous cycle
   zelcash_height = undefined;
+  fluxd_state = undefined;
   zelbench_getstatus_info = undefined;
   zelbench_benchmark_status = undefined;
   zelbench_status = undefined;
@@ -1251,9 +1254,11 @@ try{
 }
 
 try{
-  zelcash_height = (await runShellCommand(`${daemon_cli} getblockcount`, { timeout: 60000 })).stdout;
+  const blockcount = await runShellCommand(`${daemon_cli} getblockcount`, { timeout: 60000 });
+  zelcash_height = blockcount.stdout;
+  fluxd_state = fluxdState(blockcount);
 }catch {
-
+  fluxd_state = { state: 'dead' };
 }
 
  try{
@@ -1514,6 +1519,10 @@ if (typeof zelcash_height !== "undefined" && isNumber(zelcash_height) ){
   }
   zelcashd_counter=0;
   console.log('Flux daemon status = running');
+}
+else if (fluxd_state && fluxd_state.state === 'starting') {
+  // Still loading its chain: neither a crash nor a fix.
+  console.log('Flux daemon status = starting ('+fluxd_state.phase+')');
 }
 else {
 
