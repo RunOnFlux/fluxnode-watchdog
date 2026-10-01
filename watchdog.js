@@ -133,7 +133,10 @@ let h_IP=0;
 let component_update=0;
 let job_count=0;
 let sleep_msg=0;
+// The benchmark time of the last failure each check has reported, so a failure
+// is reported once rather than on every check.
 let last_failure_benchmark_time=0;
+let last_low_eps_benchmark_time=0;
 
 // Module-level variables for config - will be set during initialization
 let daemon_cli;
@@ -1204,6 +1207,7 @@ if ( zelbench_counter > 2 || zelcashd_counter > 2 || zelbench_daemon_counter > 2
           zelbench_counter=0;
           zelbench_daemon_counter=0;
           last_failure_benchmark_time=0;
+          last_low_eps_benchmark_time=0;
           watchdog_sleep="N/A"
           sleep_msg=0;
    } else {
@@ -1334,6 +1338,7 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_height !== "undefin
   await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
   zelbench_daemon_counter=0;
   last_failure_benchmark_time=0;
+  last_low_eps_benchmark_time=0;
 
 }
 
@@ -1634,15 +1639,15 @@ if ( zelbench_benchmark_status == "toaster" || zelbench_benchmark_status == "fai
     console.log('Reason: '+error_line.trim());
     if ( typeof action  == "undefined" || action == "1" ){
 
-      console.log(data_time_utc+' => Benchmark restart scheduled for next few minutes...');
-      await discord_hook("Benchmark restart scheduled!\nBenchmarks will be restarted in the next few minutes.",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
+      console.log(data_time_utc+' => Fluxbench will retry the benchmark itself');
+      await discord_hook("Benchmark failed.\nFluxbench will retry it itself.",web_hook_url,ping,'Info','#FFFF00','Info','watchdog_fix1.png',label);
 
       // Fix action benchmark notification telegram
       const emoji_title = '\u{26A1}';
       const emoji_fix = '\u{1F528}';
-      const info_type = 'Fix Action '+emoji_fix;
+      const info_type = 'Info '+emoji_fix;
       const field_type = 'Info: ';
-      const msg_text = 'Benchmark restart scheduled! Benchmarks will be restarted in the next few minutes.';
+      const msg_text = 'Benchmark failed. Fluxbench will retry it itself.';
       await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
     }
   }
@@ -1668,24 +1673,24 @@ config = require('./config.js');
 
 if (config.tier_eps_min != "" && config.tier_eps_min != "0" && zelbench_eps != "" && zelbench_eps < config.tier_eps_min ){
 // Only act if this is a new benchmark failure (zelbench_time is newer than last failure)
-if (zelbench_time && Number(zelbench_time) > last_failure_benchmark_time) {
+if (zelbench_time && Number(zelbench_time) > last_low_eps_benchmark_time) {
   ++tire_lock;
   if ( tire_lock < 4 ) {
-    last_failure_benchmark_time = Number(zelbench_time);
+    last_low_eps_benchmark_time = Number(zelbench_time);
     error('Benchmark problem detected! CPU eps under minimum limit for '+tire_name+'('+eps_limit+'), current eps: '+zelbench_eps.toFixed(2));
     console.log('Benchmark problem detected!');
     console.log('CPU eps under minimum limit for '+tire_name+'('+eps_limit+'), current eps: '+zelbench_eps.toFixed(2));
     if ( typeof action  == "undefined" || action == "1" ){
 
-      console.log(data_time_utc+' => Benchmark restart scheduled for next few minutes...');
-      await discord_hook("Benchmark restart scheduled!\nBenchmarks will be restarted in the next few minutes.",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
+      console.log(data_time_utc+' => No action taken: the CPU eps is under the configured minimum');
+      await discord_hook("Benchmark CPU eps under the configured minimum.\nNo action taken.",web_hook_url,ping,'Info','#FFFF00','Info','watchdog_fix1.png',label);
 
       // Fix action benchmark notification telegram
       const emoji_title = '\u{26A1}';
       const emoji_fix = '\u{1F528}';
-      const info_type = 'Fix Action '+emoji_fix;
+      const info_type = 'Info '+emoji_fix;
       const field_type = 'Info: ';
-      const msg_text = 'Benchmark restart scheduled! Benchmarks will be restarted in the next few minutes.';
+      const msg_text = 'Benchmark CPU eps under the configured minimum. No action taken.';
       await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
     }
   }
@@ -1693,7 +1698,7 @@ if (zelbench_time && Number(zelbench_time) > last_failure_benchmark_time) {
 
 } else {
 tire_lock=0;
-last_failure_benchmark_time=0;
+last_low_eps_benchmark_time=0;
 }
  if ( zelcash_height != "" && typeof zelcash_height !== "undefined" && isNumber(zelcash_height) ){
    const skip_sync=between(1, 4);
