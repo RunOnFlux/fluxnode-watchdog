@@ -10,6 +10,7 @@ const fsPromises = require('fs/promises');
 const axios = require('axios');
 const path = require('node:path');
 const { fluxdState } = require('./fluxd_state');
+const { bandwidthReport } = require('./bandwidth_report');
 
 const execFilePromise = promisify(execFile);
 
@@ -137,6 +138,8 @@ let sleep_msg=0;
 // is reported once rather than on every check.
 let last_failure_benchmark_time=0;
 let last_low_eps_benchmark_time=0;
+// Whether the node's missing bandwidth figure has been reported.
+let unmeasured_reported=false;
 
 // Module-level variables for config - will be set during initialization
 let daemon_cli;
@@ -173,6 +176,7 @@ let zelbench_getbenchmarks_info;
 let zelbench_eps;
 let zelbench_time;
 let zelbench_error;
+let zelbench_unmeasured;
 let zelcash_getzelnodestatus_info;
 let zelcash_node_status;
 let zelcash_last_paid_height;
@@ -1115,6 +1119,7 @@ async function flux_check() {
   zelbench_eps = undefined;
   zelbench_time = undefined;
   zelbench_error = undefined;
+  zelbench_unmeasured = undefined;
   zelcash_getzelnodestatus_info = undefined;
   zelcash_node_status = undefined;
   zelcash_last_paid_height = undefined;
@@ -1253,6 +1258,7 @@ try{
     zelbench_eps = zelbench_getbenchmarks_info.eps;
     zelbench_time = zelbench_getbenchmarks_info.time;
     zelbench_error = zelbench_getbenchmarks_info.error;
+    zelbench_unmeasured = zelbench_getbenchmarks_info.unmeasured === true;
  }catch {
 
 }
@@ -1664,6 +1670,34 @@ else if ( zelbench_counter != 0 && ["CUMULUS", "NIMBUS", "STRATUS"].includes(zel
   await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
   zelbench_counter=0;
   last_failure_benchmark_time=0;
+}
+
+const bandwidth_report = bandwidthReport(zelbench_unmeasured, unmeasured_reported);
+if ( bandwidth_report == 'unmeasured' ){
+  unmeasured_reported=true;
+  const unmeasured_msg = 'Bandwidth could not be measured. This node cannot confirm and will expire unless a speedtest succeeds.';
+  error(unmeasured_msg);
+  console.log(unmeasured_msg);
+  await discord_hook(unmeasured_msg,web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
+
+  // Unmeasured bandwidth notification telegram
+  const emoji_title = '\u{1F6A8}';
+  const emoji_bell = '\u{1F514}';
+  const info_type = 'Alert '+emoji_bell;
+  const field_type = 'Error: ';
+  await send_telegram_msg(emoji_title,info_type,field_type,unmeasured_msg,label);
+}
+else if ( bandwidth_report == 'measured' ){
+  unmeasured_reported=false;
+  await discord_hook("Bandwidth measured again.",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
+
+  // Measured bandwidth notification telegram
+  const emoji_title = '\u{1F4A1}';
+  const emoji_fixed = '\u{2705}';
+  const info_type = 'Fixed Info '+emoji_fixed;
+  const field_type = 'Info: ';
+  const msg_text = 'Bandwidth measured again.';
+  await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 }
 
 
