@@ -1675,7 +1675,7 @@ else if ( zelbench_counter != 0 && ["CUMULUS", "NIMBUS", "STRATUS"].includes(zel
 const bandwidth_report = bandwidthReport(zelbench_unmeasured, unmeasured_reported);
 if ( bandwidth_report == 'unmeasured' ){
   unmeasured_reported=true;
-  const unmeasured_msg = 'Bandwidth could not be measured. This node cannot confirm and will expire unless a speedtest succeeds.';
+  const unmeasured_msg = 'Bandwidth unmeasured: no speedtest succeeded and no stored measurement is valid.';
   error(unmeasured_msg);
   console.log(unmeasured_msg);
   await discord_hook(unmeasured_msg,web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
