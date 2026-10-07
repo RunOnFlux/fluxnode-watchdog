@@ -10,6 +10,8 @@ const fsPromises = require('fs/promises');
 const axios = require('axios');
 const path = require('node:path');
 const { fluxdState } = require('./fluxd_state');
+const { waitForFluxOs } = require('./fluxos_ready');
+const { fluxosUnitStarting } = require('./fluxos_state');
 const { bandwidthReport } = require('./bandwidth_report');
 const { compareVersions } = require('./versions');
 
@@ -1095,8 +1097,10 @@ async function flux_check() {
   ? "fluxbenchd.service"
   : "zelcash.service";
 
+  // --no-block: fluxos is a notify unit, active only once FluxOS reports
+  // ready, which can be minutes after a restart.
   const fluxOsRestartCmd = isArcane
-    ? "sudo systemctl restart fluxos.service"
+    ? "sudo systemctl restart --no-block fluxos.service"
     : "pm2 restart flux";
 
   const fluxbenchLogPath = isArcane
@@ -1347,6 +1351,9 @@ if (zelback_status == "" || typeof zelback_status == "undefined"){
 } else {
 
   if (zelback_status == "disconnected"){
+   if (isArcane && fluxosUnitStarting(await runShellCommand('systemctl show fluxos.service -p ActiveState --value', { timeout: 5000 }))) {
+    console.log('FluxOS status = starting');
+   } else {
     ++disc_count;
     console.log('FluxOS status = '+zelback_status);
     if ( lock_zelback != "1" && disc_count == 2) {
@@ -1390,6 +1397,7 @@ if (zelback_status == "" || typeof zelback_status == "undefined"){
        }
 
      }
+   }
 
   } else {
     console.log('FluxOS status = '+zelback_status);
@@ -1846,8 +1854,36 @@ async function main() {
     // Don't exit - watchdog should keep running
   }
 
+  await holdForFluxOs();
+
   // Start the monitoring loop - this should ALWAYS run
   job_creator();
+}
+
+// FluxOS has to have answered once before it is judged; a FluxOS that never
+// answers is still checked after the longest hold.
+async function holdForFluxOs() {
+  let port = 16127;
+  try {
+    const { stdout: api_port } = await runShellCommand(`grep -w apiport ${fluxOsConfigPath} | grep -o '[[:digit:]]*'`, { timeout: 5000 });
+    port = Number(api_port.trim()) || port;
+  } catch (err) {
+    console.error('Could not read the FluxOS api port, assuming 16127:', err);
+  }
+  const url = `http://localhost:${port}/flux/version`;
+  console.log(`Waiting for FluxOS to answer on port ${port} before the first check`);
+  const { answered, waitedMs } = await waitForFluxOs(async () => {
+    try {
+      const res = await axios.get(url, { timeout: 5000 });
+      return Boolean(res.data && res.data.status === 'success');
+    } catch {
+      return false;
+    }
+  });
+  const seconds = Math.round(waitedMs / 1000);
+  console.log(answered
+    ? `FluxOS answered after ${seconds} s`
+    : `FluxOS has not answered in ${seconds} s; checking anyway`);
 }
 
 // Start the watchdog
