@@ -11,6 +11,7 @@ const axios = require('axios');
 const path = require('node:path');
 const { fluxdState } = require('./fluxd_state');
 const { bandwidthReport } = require('./bandwidth_report');
+const { compareVersions } = require('./versions');
 
 const execFilePromise = promisify(execFile);
 
@@ -191,45 +192,6 @@ function between(min, max) {
 
 let autoUpdate = between(60, 240); // auto update will now be different on each node and checks are defined between 1 and 4h.
 let cloudUIChecked = false;
-
-const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*)?$/;
-
-/**
- * Compare two versions by semver precedence (semver.org, section 11): the
- * numeric core first, then a pre-release ranks below its release, identifier
- * by identifier. Build metadata is ignored.
- * @param {string} v1
- * @param {string} v2
- * @returns {number} 1, 0 or -1; NaN when either is not a valid semver, so
- *   every ordering test on the result is false.
- */
-function compareVersions(v1, v2) {
-  const a = SEMVER.exec(String(v1).trim());
-  const b = SEMVER.exec(String(v2).trim());
-  if (!a || !b) return NaN;
-  for (let i = 1; i <= 3; i += 1) {
-    const d = Number(a[i]) - Number(b[i]);
-    if (d !== 0) return Math.sign(d);
-  }
-  if (!a[4] || !b[4]) return (a[4] ? -1 : 0) + (b[4] ? 1 : 0);
-  const pa = a[4].split('.');
-  const pb = b[4].split('.');
-  for (let i = 0; i < Math.max(pa.length, pb.length); i += 1) {
-    if (pa[i] === undefined) return -1;
-    if (pb[i] === undefined) return 1;
-    const na = /^\d+$/.test(pa[i]);
-    const nb = /^\d+$/.test(pb[i]);
-    if (na && nb) {
-      const d = Number(pa[i]) - Number(pb[i]);
-      if (d !== 0) return Math.sign(d);
-    } else if (na !== nb) {
-      return na ? -1 : 1;
-    } else if (pa[i] !== pb[i]) {
-      return pa[i] < pb[i] ? -1 : 1;
-    }
-  }
-  return 0;
-}
 
 // The CloudUI fetch takes the API host as an argument rather than knowing one. FluxOS
 // holds the single value every node reaches, so it is read from there instead of being
@@ -991,7 +953,7 @@ async function auto_update() {
     let zelcash_local_version = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
     console.log(`Flux daemon current: ${zelcash_remote_version.trim()} installed: ${zelcash_local_version.trim()}`);
     if ( zelcash_remote_version.trim() != "" && zelcash_local_version.trim() != "" ){
-      if ( zelcash_remote_version.trim() !== zelcash_local_version.trim() ){
+      if ( compareVersions(zelcash_remote_version, zelcash_local_version) > 0 ){
       component_update = 1;
       console.log('New Flux daemon version detected:');
       console.log('=================================================================');
@@ -1046,7 +1008,7 @@ if (!isArcane || config.zelbench_update == "1") {
 
   if ( zelbench_remote_version.trim() != "" && zelbench_local_version.trim() != "" ){
 
-    if ( zelbench_remote_version.trim() !== zelbench_local_version.trim() ){
+    if ( compareVersions(zelbench_remote_version, zelbench_local_version) > 0 ){
      component_update = 1;
      console.log('New Fluxbench version detected:');
      console.log('=================================================================');
