@@ -789,7 +789,7 @@ async function auto_update() {
     : "pm2 stop flux";
 
   const fluxOsStartCmd = isArcane
-    ? "systemctl start fluxos.service"
+    ? "systemctl start --no-block fluxos.service"
     : "pm2 start flux";
 
   const fluxWatchdogRestartCmd = isArcane
@@ -1278,7 +1278,7 @@ if ( typeof zelbench_status == "undefined" && typeof zelcash_height !== "undefin
         // fluxos.service requires fluxbenchd.service, so FluxOS is down whenever
         // fluxbenchd has been stopped, and starting fluxbenchd does not start it.
         await runShellCommand(`sudo systemctl restart ${fluxbenchServiceName}`, { timeout: 30000 });
-        await runShellCommand("sudo systemctl start fluxos.service", { timeout: 30000 });
+        await runShellCommand("sudo systemctl start --no-block fluxos.service", { timeout: 30000 });
       } else {
         await runShellCommand(`sudo systemctl stop ${fluxbenchServiceName}`, { timeout: 30000 });
         await sleep(2 * 1_000);
