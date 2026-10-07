@@ -1,6 +1,6 @@
 {
   "name": "watchdog",
-  "version": "6.7.6",
+  "version": "6.7.7",
   "description": "Watchdog for fluxnode",
   "main": "watchdog.js",
   "dependencies": {
@@ -15,5 +15,8 @@
   },
   "keywords": [],
   "author": "Kamil Piekarski",
-  "license": "ISC"
+  "license": "ISC",
+  "scripts": {
+    "test": "node --test"
+  }
 }
