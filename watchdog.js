@@ -112,6 +112,9 @@ const fluxdConfigPath = process.env.FLUXD_CONFIG_PATH;
 const fluxbenchPath = process.env.FLUXBENCH_PATH;
 const fluxOsRootDir = process.env.FLUXOS_PATH || path.join(os.homedir(), "zelflux");
 const fluxOsConfigPath = path.join(fluxOsRootDir, "config/userconfig.js")
+// fluxd is started and restarted without waiting for it: as a notify unit it is
+// active only once its RPC answers, which after a block index load is minutes
+// and after a reindex hours, and the next cycle reads its state anyway.
 const fluxdServiceName = isArcane ? "fluxd.service" : "zelcash.service";
 const historyFilePath = path.join(__dirname, 'history.json');
 
@@ -431,7 +434,7 @@ async function Check_Sync(height,time) {
          await runCommand('systemctl', { params: ['stop', fluxdServiceName], runAsRoot: true, timeout: 30000 });
          await sleep(2 * 1_000);
          if (!isArcane) await runCommand('fuser', { params: ['-k', '16125/tcp'], runAsRoot: true, timeout: 8000, logError: false });
-         await runCommand('systemctl', { params: ['start', fluxdServiceName], runAsRoot: true, timeout: 30000 });
+         await runCommand('systemctl', { params: ['start', '--no-block', fluxdServiceName], runAsRoot: true, timeout: 30000 });
          console.log(time+' => Flux daemon restarting...');
          await discord_hook("Flux daemon restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
@@ -974,7 +977,7 @@ async function auto_update() {
       await runShellCommand('DEBIAN_FRONTEND=noninteractive apt-get install flux -y < /dev/null', { runAsRoot: true, timeout: 180000 });
       let zelcash_dpkg_version_after = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
       await sleep(2 * 1_000);
-      await runCommand('systemctl', { params: ['start', fluxdServiceName], runAsRoot: true, timeout: 30000 });
+      await runCommand('systemctl', { params: ['start', '--no-block', fluxdServiceName], runAsRoot: true, timeout: 30000 });
       if ( (zelcash_dpkg_version_before !== zelcash_dpkg_version_after) && zelcash_dpkg_version_after != "" ){
         if (zelcash_dpkg_version_after.trim().endsWith('.0')) {
           await discord_hook(`Fluxnode daemon updated!\nVersion: **${zelcash_dpkg_version_after}**`,web_hook_url,ping,'Update','#1F8B4C','Info','watchdog_update1.png',label);
@@ -1036,7 +1039,7 @@ if (!isArcane || config.zelbench_update == "1") {
    await runShellCommand('DEBIAN_FRONTEND=noninteractive apt-get install fluxbench -y < /dev/null', { runAsRoot: true, timeout: 180000 });
    await sleep(2 * 1_000);
    if (isArcane) await runCommand('systemctl', { params: ['start', 'fluxbenchd.service'], runAsRoot: true, timeout: 30000 });
-   await runCommand('systemctl', { params: ['start', fluxdServiceName], runAsRoot: true, timeout: 30000 });
+   await runCommand('systemctl', { params: ['start', '--no-block', fluxdServiceName], runAsRoot: true, timeout: 30000 });
 
    let zelbench_dpkg_version_after = (await runShellCommand(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`, { timeout: 30000 })).stdout;
 
@@ -1131,7 +1134,7 @@ if ( service_inactive.trim() == "inactive" ) {
   console.log('============================================================['+inactive_counter+']');
   if ( inactive_counter > 6 ) {
     if (!isArcane) await runShellCommand("sudo fuser -k 16125/tcp", { timeout: 30000 });
-    await runShellCommand(`sudo systemctl start ${fluxdServiceName}`, { timeout: 30000 });
+    await runShellCommand(`sudo systemctl start --no-block ${fluxdServiceName}`, { timeout: 30000 });
     inactive_counter=0;
    } else {
    return;
@@ -1371,7 +1374,7 @@ if (zelback_status == "" || typeof zelback_status == "undefined"){
 
        if ( disc_count == 2 ){
         await runShellCommand(fluxOsRestartCmd, { timeout: 30000 });
-        await runCommand('systemctl', { params: ['restart', fluxdServiceName], runAsRoot: true, timeout: 30000 });
+        await runCommand('systemctl', { params: ['restart', '--no-block', fluxdServiceName], runAsRoot: true, timeout: 30000 });
         await sleep(2 * 1_000);
         console.log(data_time_utc+' => FluxOS restarting...');
         await discord_hook("FluxOS restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
@@ -1522,7 +1525,7 @@ else {
       await runShellCommand(`sudo systemctl stop ${fluxdServiceName}`, { timeout: 30000 });
       await sleep(2 * 1_000);
       if (!isArcane) await runShellCommand("sudo fuser -k 16125/tcp", { timeout: 30000 });
-      await runShellCommand(`sudo systemctl start ${fluxdServiceName}`, { timeout: 30000 });
+      await runShellCommand(`sudo systemctl start --no-block ${fluxdServiceName}`, { timeout: 30000 });
       console.log(data_time_utc+' => Flux daemon restarting...');
       await discord_hook("Flux daemon restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
 
