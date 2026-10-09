@@ -2,9 +2,9 @@
  * The hold before the watchdog's first check.
  *
  * The watchdog starts with the stack, and FluxOS can still be coming up: on
- * Arcane it is a notify unit that waits for fluxd, under pm2 it is simply
- * slower than the watchdog. A FluxOS judged before it has answered once would
- * be restarted for starting.
+ * Arcane it is a notify unit that is activating until its API listens, under
+ * pm2 it is simply slower than the watchdog. A FluxOS judged before it has
+ * answered once would be restarted for starting.
  */
 
 const DEFAULT_MAX_WAIT_MS = 5 * 60 * 1000;
