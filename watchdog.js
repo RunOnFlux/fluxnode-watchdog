@@ -2008,7 +2008,7 @@ async function flux_check() {
       ++zelbench_counter;
       last_failure_benchmark_time = Number(zelbench_time);
       const { stdout: error_line } = await runShellCommand(
-        `egrep -a --color 'Failed' ${fluxbenchLogPath} | tail -1 | sed 's/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.[0-9]\{2\}.//'`,
+        `egrep -a --color 'Failed' ${fluxbenchLogPath} | tail -1 | sed 's/[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}.[0-9]\\{2\\}.[0-9]\\{2\\}.[0-9]\\{2\\}.//'`,
         { timeout: 30000 },
       );
       error('Benchmark problem detected! Fluxbench status: ' + zelbench_benchmark_status);
