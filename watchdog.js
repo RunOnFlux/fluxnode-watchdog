@@ -1377,7 +1377,9 @@ async function flux_check() {
         (await runShellCommand(`${benchStatusCli()} getstatus`, { timeout: 60000 })).stdout,
       );
       zelbench_benchmark_status = zelbench_getstatus_info.benchmarking;
-    } catch {}
+    } catch {
+      // A read that fails leaves the node asleep: waking needs both answers.
+    }
 
     if (watchdog_sleep != '1') {
       watchdog_sleep = '1';
@@ -1444,7 +1446,9 @@ async function flux_check() {
       zelback_status = zelbench_getstatus_info.flux;
     }
     zelbench_benchmark_status = zelbench_getstatus_info.benchmarking;
-  } catch {}
+  } catch {
+    // Unread, the statuses stay undefined and are reported as dead below.
+  }
 
   try {
     zelbench_getbenchmarks_info = JSON.parse(
@@ -1455,7 +1459,9 @@ async function flux_check() {
     zelbench_time = zelbench_getbenchmarks_info.time;
     zelbench_error = zelbench_getbenchmarks_info.error;
     zelbench_unmeasured = zelbench_getbenchmarks_info.unmeasured === true;
-  } catch {}
+  } catch {
+    // Unread, the benchmark figures stay undefined and the checks on them do nothing.
+  }
 
   try {
     const blockcount = await runShellCommand(`${daemon_cli} getblockcount`, { timeout: 60000 });
@@ -1522,7 +1528,9 @@ async function flux_check() {
     zelcash_last_paid_height = zelcash_getzelnodestatus_info.last_paid_height;
     activesince = zelcash_getzelnodestatus_info.activesince;
     lastpaid = zelcash_getzelnodestatus_info.lastpaid;
-  } catch {}
+  } catch {
+    // Unread, the node status stays undefined and is reported as dead below.
+  }
 
   const mongod_check = (await runShellCommand('pgrep mongod', { timeout: 30000 })).stdout;
 
