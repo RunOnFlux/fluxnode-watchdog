@@ -801,6 +801,20 @@ async function auto_update() {
 
   const fluxOsPkgFile = path.join(fluxOsRootDir, "package.json");
 
+  // apt decides what an update installs, so it also decides whether there is
+  // one: its candidate is never below the installed version, so a candidate
+  // that differs is an upgrade. The package lists are refreshed once per check.
+  let aptListsRefreshed = false;
+  const aptVersions = async (pkg) => {
+    if (!aptListsRefreshed) {
+      await runShellCommand('DEBIAN_FRONTEND=noninteractive apt-get update -y < /dev/null', { runAsRoot: true, timeout: 300000 });
+      aptListsRefreshed = true;
+    }
+    const installed = (await runShellCommand(`dpkg-query -W -f='\${Version}' ${pkg}`, { timeout: 30000 })).stdout.trim();
+    const candidate = (await runShellCommand(`apt-cache show --no-all-versions ${pkg} | sed -n 's/^Version: //p'`, { timeout: 30000 })).stdout.trim();
+    return { installed, candidate, upgrade: Boolean(installed && candidate && candidate !== installed) };
+  };
+
   delete require.cache[require.resolve('./config.js')];
   config = require('./config.js');
   const { stdout: remote_version } = await runShellCommand("curl -sS -m 5 https://raw.githubusercontent.com/RunOnFlux/fluxnode-watchdog/master/package.json | jq -r '.version'", { timeout: 7000 });
@@ -952,11 +966,12 @@ async function auto_update() {
   }
   // Flux daemon auto-update (always enabled for non-Arcane, config-dependent for Arcane)
   if (!isArcane || config.zelcash_update == "1") {
-    let zelcash_remote_version = (await runShellCommand("curl -s -m 5 https://apt.runonflux.io/pool/main/f/flux/ | grep -o '[0-9].[0-9].[0-9]' | head -n1", { timeout: 7000 })).stdout;
-    let zelcash_local_version = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
+    const flux_versions = await aptVersions('flux');
+    let zelcash_remote_version = flux_versions.candidate;
+    let zelcash_local_version = flux_versions.installed;
     console.log(`Flux daemon current: ${zelcash_remote_version.trim()} installed: ${zelcash_local_version.trim()}`);
     if ( zelcash_remote_version.trim() != "" && zelcash_local_version.trim() != "" ){
-      if ( compareVersions(zelcash_remote_version, zelcash_local_version) > 0 ){
+      if ( flux_versions.upgrade ){
       component_update = 1;
       console.log('New Flux daemon version detected:');
       console.log('=================================================================');
@@ -973,7 +988,6 @@ async function auto_update() {
       let zelcash_dpkg_version_before = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
       await runCommand('systemctl', { params: ['stop', fluxdServiceName], runAsRoot: true, timeout: 30000 });
       if (!isArcane) await runCommand('fuser', { params: ['-k', '16125/tcp'], runAsRoot: true, timeout: 8000, logError: false });
-      await runShellCommand('DEBIAN_FRONTEND=noninteractive apt-get update -y < /dev/null', { runAsRoot: true, timeout: 300000 });
       await runShellCommand('DEBIAN_FRONTEND=noninteractive apt-get install flux -y < /dev/null', { runAsRoot: true, timeout: 180000 });
       let zelcash_dpkg_version_after = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
       await sleep(2 * 1_000);
@@ -1003,15 +1017,16 @@ async function auto_update() {
 
 // Fluxbench auto-update (always enabled for non-Arcane, config-dependent for Arcane)
 if (!isArcane || config.zelbench_update == "1") {
- let zelbench_remote_version = (await runShellCommand("curl -s -m 5 https://apt.runonflux.io/pool/main/f/fluxbench/ | grep -o '[0-9].[0-9].[0-9]' | head -n1", { timeout: 7000 })).stdout;
- let zelbench_local_version = (await runShellCommand("dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'", { timeout: 30000 })).stdout;
+ const fluxbench_versions = await aptVersions('fluxbench');
+ let zelbench_remote_version = fluxbench_versions.candidate;
+ let zelbench_local_version = fluxbench_versions.installed;
 
 
  console.log(`Fluxbench current: ${zelbench_remote_version.trim()} installed: ${zelbench_local_version.trim()}`);
 
   if ( zelbench_remote_version.trim() != "" && zelbench_local_version.trim() != "" ){
 
-    if ( compareVersions(zelbench_remote_version, zelbench_local_version) > 0 ){
+    if ( fluxbench_versions.upgrade ){
      component_update = 1;
      console.log('New Fluxbench version detected:');
      console.log('=================================================================');
@@ -1035,7 +1050,6 @@ if (!isArcane || config.zelbench_update == "1") {
    await runCommand('systemctl', { params: ['stop', fluxdServiceName], runAsRoot: true, timeout: 30000 });
    if (isArcane) await runCommand('systemctl', { params: ['stop', 'fluxbenchd.service'], runAsRoot: true, timeout: 30000 });
    if (!isArcane) await runCommand('fuser', { params: ['-k', '16125/tcp'], runAsRoot: true, timeout: 8000, logError: false });
-   await runShellCommand('DEBIAN_FRONTEND=noninteractive apt-get update -y < /dev/null', { runAsRoot: true, timeout: 300000 });
    await runShellCommand('DEBIAN_FRONTEND=noninteractive apt-get install fluxbench -y < /dev/null', { runAsRoot: true, timeout: 180000 });
    await sleep(2 * 1_000);
    if (isArcane) await runCommand('systemctl', { params: ['start', 'fluxbenchd.service'], runAsRoot: true, timeout: 30000 });
