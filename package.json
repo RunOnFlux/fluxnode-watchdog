@@ -9,6 +9,12 @@
     "moment": "~2.30.1",
     "webhook-discord": "~3.7.8"
   },
+  "devDependencies": {
+    "@eslint/js": "~10.0.1",
+    "eslint": "~10.12.0",
+    "globals": "~17.13.0",
+    "prettier": "~3.9.10"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/RunOnFlux/fluxnode-watchdog.git"
@@ -17,6 +23,9 @@
   "author": "Kamil Piekarski",
   "license": "ISC",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   }
 }
