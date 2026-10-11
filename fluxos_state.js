@@ -23,9 +23,11 @@ function fluxosUnitStarting({ stdout = '' } = {}) {
   };
   const state = property('ActiveState');
   if (state === 'inactive') return property('Job') !== '';
-  return state === 'activating'
-    && ['start-pre', 'start', 'start-post'].includes(property('SubState'))
-    && property('NRestarts') === '0';
+  return (
+    state === 'activating' &&
+    ['start-pre', 'start', 'start-post'].includes(property('SubState')) &&
+    property('NRestarts') === '0'
+  );
 }
 
 module.exports = { fluxosUnitStarting };

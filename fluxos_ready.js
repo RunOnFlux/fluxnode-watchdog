@@ -10,7 +10,10 @@
 const DEFAULT_MAX_WAIT_MS = 5 * 60 * 1000;
 const DEFAULT_POLL_MS = 10 * 1000;
 
-const defaultSleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
+const defaultSleep = (ms) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 
 /**
  * Waits until `answers()` resolves true, or `maxWaitMs` have passed.
@@ -19,9 +22,15 @@ const defaultSleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms);
  *   maxWaitMs?: number, pollMs?: number}} [options]
  * @returns {Promise<{answered: boolean, waitedMs: number}>}
  */
-async function waitForFluxOs(answers, {
-  now = Date.now, sleep = defaultSleep, maxWaitMs = DEFAULT_MAX_WAIT_MS, pollMs = DEFAULT_POLL_MS,
-} = {}) {
+async function waitForFluxOs(
+  answers,
+  {
+    now = Date.now,
+    sleep = defaultSleep,
+    maxWaitMs = DEFAULT_MAX_WAIT_MS,
+    pollMs = DEFAULT_POLL_MS,
+  } = {},
+) {
   const start = now();
   for (;;) {
     if (await answers()) return { answered: true, waitedMs: now() - start };

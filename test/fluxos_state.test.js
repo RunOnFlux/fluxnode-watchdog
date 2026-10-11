@@ -19,24 +19,40 @@ test('a first attempt that is activating is starting', () => {
 test('a unit waiting for systemd to restart it is not starting', () => {
   for (const sub of ['auto-restart', 'auto-restart-queued']) {
     for (const restarts of ['0', '3']) {
-      assert.strictEqual(fluxosUnitStarting(show('activating', { sub, restarts })), false, `${sub} ${restarts}`);
+      assert.strictEqual(
+        fluxosUnitStarting(show('activating', { sub, restarts })),
+        false,
+        `${sub} ${restarts}`,
+      );
     }
   }
 });
 
 test('an attempt systemd made after a failure is not starting', () => {
-  assert.strictEqual(fluxosUnitStarting(show('activating', { sub: 'start', restarts: '1' })), false);
-  assert.strictEqual(fluxosUnitStarting(show('activating', { sub: 'start-pre', restarts: '12' })), false);
+  assert.strictEqual(
+    fluxosUnitStarting(show('activating', { sub: 'start', restarts: '1' })),
+    false,
+  );
+  assert.strictEqual(
+    fluxosUnitStarting(show('activating', { sub: 'start-pre', restarts: '12' })),
+    false,
+  );
 });
 
 test('an activating unit without a restart count is not starting', () => {
   assert.strictEqual(fluxosUnitStarting(show('activating', { sub: 'start', restarts: '' })), false);
-  assert.strictEqual(fluxosUnitStarting({ stdout: 'ActiveState=activating\nSubState=start\n' }), false);
+  assert.strictEqual(
+    fluxosUnitStarting({ stdout: 'ActiveState=activating\nSubState=start\n' }),
+    false,
+  );
 });
 
 test('an inactive unit with a queued job is starting', () => {
   assert.strictEqual(fluxosUnitStarting(show('inactive', { sub: 'dead', job: '4785' })), true);
-  assert.strictEqual(fluxosUnitStarting(show('inactive', { sub: 'dead', job: '4785', restarts: '2' })), true);
+  assert.strictEqual(
+    fluxosUnitStarting(show('inactive', { sub: 'dead', job: '4785', restarts: '2' })),
+    true,
+  );
 });
 
 test('an inactive unit with no job is not starting', () => {
@@ -50,7 +66,11 @@ test('an active unit is not starting, with or without a job', () => {
 
 test('any other state is not starting', () => {
   for (const state of ['failed', 'deactivating', 'activ', '']) {
-    assert.strictEqual(fluxosUnitStarting(show(state, { sub: 'start', job: '5001' })), false, state);
+    assert.strictEqual(
+      fluxosUnitStarting(show(state, { sub: 'start', job: '5001' })),
+      false,
+      state,
+    );
   }
   assert.strictEqual(fluxosUnitStarting({ stdout: '' }), false);
   assert.strictEqual(fluxosUnitStarting(), false);

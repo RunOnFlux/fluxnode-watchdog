@@ -24,7 +24,11 @@ function fluxdStartReport(fluxd, { since, reported }, now) {
     const slow = !reported && now - start >= SLOW_START_MS;
     return { since: start, reported: reported || slow, report: slow ? 'slow' : null };
   }
-  return { since: null, reported: false, report: fluxd.state === 'running' && reported ? 'started' : null };
+  return {
+    since: null,
+    reported: false,
+    report: fluxd.state === 'running' && reported ? 'started' : null,
+  };
 }
 
 module.exports = { fluxdStartReport, SLOW_START_MS };

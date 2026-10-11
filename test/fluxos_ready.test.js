@@ -9,7 +9,10 @@ function fakeClock() {
   const slept = [];
   return {
     now: () => t,
-    sleep: async (ms) => { slept.push(ms); t += ms; },
+    sleep: async (ms) => {
+      slept.push(ms);
+      t += ms;
+    },
     slept,
   };
 }
@@ -24,7 +27,10 @@ test('goes on at once when FluxOS answers', async () => {
 test('polls until FluxOS answers', async () => {
   const clock = fakeClock();
   let asks = 0;
-  const answers = async () => { asks += 1; return asks === 3; };
+  const answers = async () => {
+    asks += 1;
+    return asks === 3;
+  };
   const result = await waitForFluxOs(answers, { ...clock, maxWaitMs: 1000, pollMs: 10 });
   assert.deepStrictEqual(result, { answered: true, waitedMs: 20 });
   assert.deepStrictEqual(clock.slept, [10, 10]);
