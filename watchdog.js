@@ -10,6 +10,7 @@ const fsPromises = require('fs/promises');
 const axios = require('axios');
 const path = require('node:path');
 const { fluxdState } = require('./fluxd_state');
+const { fluxdStartReport } = require('./fluxd_start_report');
 const { bandwidthReport } = require('./bandwidth_report');
 const { compareVersions } = require('./versions');
 
@@ -113,8 +114,8 @@ const fluxbenchPath = process.env.FLUXBENCH_PATH;
 const fluxOsRootDir = process.env.FLUXOS_PATH || path.join(os.homedir(), "zelflux");
 const fluxOsConfigPath = path.join(fluxOsRootDir, "config/userconfig.js")
 // fluxd is started and restarted without waiting for it: as a notify unit it is
-// active only once its RPC answers, which after a block index load is minutes
-// and after a reindex hours, and the next cycle reads its state anyway.
+// active only once its RPC answers, a minute or two after it starts, and the
+// next cycle reads its state anyway.
 const fluxdServiceName = isArcane ? "fluxd.service" : "zelcash.service";
 const historyFilePath = path.join(__dirname, 'history.json');
 
@@ -144,6 +145,8 @@ let last_failure_benchmark_time=0;
 let last_low_eps_benchmark_time=0;
 // Whether the node's missing bandwidth figure has been reported.
 let unmeasured_reported=false;
+// When fluxd was first seen starting, and whether that start has been reported as slow.
+let fluxd_start={ since: null, reported: false };
 
 // Module-level variables for config - will be set during initialization
 let daemon_cli;
@@ -1248,6 +1251,33 @@ try{
   fluxd_state = fluxdState(blockcount);
 }catch {
   fluxd_state = { state: 'dead' };
+}
+
+const { report: fluxd_start_report, ...fluxd_start_record } = fluxdStartReport(fluxd_state, fluxd_start, Date.now());
+fluxd_start = fluxd_start_record;
+if ( fluxd_start_report == 'slow' ){
+  const slow_msg = 'Flux daemon still starting after an hour ('+fluxd_state.phase+'). No action taken.';
+  error(slow_msg);
+  console.log(slow_msg);
+  await discord_hook(slow_msg,web_hook_url,ping,'Alert','#EA1414','Error','watchdog_error1.png',label);
+
+  // Slow fluxd start notification telegram
+  const emoji_title = '\u{1F6A8}';
+  const emoji_bell = '\u{1F514}';
+  const info_type = 'Alert '+emoji_bell;
+  const field_type = 'Error: ';
+  await send_telegram_msg(emoji_title,info_type,field_type,slow_msg,label);
+}
+else if ( fluxd_start_report == 'started' ){
+  await discord_hook("Flux daemon started.",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
+
+  // Started fluxd notification telegram
+  const emoji_title = '\u{1F4A1}';
+  const emoji_fixed = '\u{2705}';
+  const info_type = 'Fixed Info '+emoji_fixed;
+  const field_type = 'Info: ';
+  const msg_text = 'Flux daemon started.';
+  await send_telegram_msg(emoji_title,info_type,field_type,msg_text,label);
 }
 
  try{
