@@ -980,18 +980,12 @@ async function auto_update() {
       console.log('=================================================================');
       console.log('Local version: '+zelcash_local_version.trim());
       console.log('Remote version: '+zelcash_remote_version.trim());
-      let update_info = (await runShellCommand("ps -C apt,apt-get,dpkg >/dev/null && echo 'installing software' || echo 'all clear'", { timeout: 30000 })).stdout;
-      if ( update_info == "installing software" ) {
-
-        (await runShellCommand("sudo killall apt", { timeout: 30000 })).stdout;
-        (await runShellCommand("sudo killall apt-get", { timeout: 30000 })).stdout;
-        (await runShellCommand("sudo dpkg --configure -a", { timeout: 30000 })).stdout;
-
-      }
       let zelcash_dpkg_version_before = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
       await runCommand('systemctl', { params: ['stop', fluxdServiceName], runAsRoot: true, timeout: 30000 });
       if (!isArcane) await runCommand('fuser', { params: ['-k', '16125/tcp'], runAsRoot: true, timeout: 8000, logError: false });
-      await runShellCommand('DEBIAN_FRONTEND=noninteractive apt-get install flux -y < /dev/null', { runAsRoot: true, timeout: 180000 });
+      // A busy apt is waited for up to 300 s, and the command timeout allows for that wait on
+      // top of the install's own 180 s.
+      await runShellCommand('DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install flux -y < /dev/null', { runAsRoot: true, timeout: 480000 });
       let zelcash_dpkg_version_after = (await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, { timeout: 30000 })).stdout;
       await sleep(2 * 1_000);
       await runCommand('systemctl', { params: ['start', '--no-block', fluxdServiceName], runAsRoot: true, timeout: 30000 });
@@ -1037,14 +1031,6 @@ if (!isArcane || config.zelbench_update == "1") {
      console.log('Remote version: '+zelbench_remote_version.trim());
      console.log('=================================================================');
 
-     let update_info = (await runShellCommand("ps -C apt,apt-get,dpkg >/dev/null && echo 'installing software' || echo 'all clear'", { timeout: 30000 })).stdout;
-     if ( update_info == "installing software" ) {
-
-      (await runShellCommand("sudo killall apt", { timeout: 30000 })).stdout;
-      (await runShellCommand("sudo killall apt-get", { timeout: 30000 })).stdout;
-      (await runShellCommand("sudo dpkg --configure -a", { timeout: 30000 })).stdout;
-
-     }
 
 
    let zelbench_dpkg_version_before = (await runShellCommand(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`, { timeout: 30000 })).stdout;
@@ -1053,7 +1039,7 @@ if (!isArcane || config.zelbench_update == "1") {
    await runCommand('systemctl', { params: ['stop', fluxdServiceName], runAsRoot: true, timeout: 30000 });
    if (isArcane) await runCommand('systemctl', { params: ['stop', 'fluxbenchd.service'], runAsRoot: true, timeout: 30000 });
    if (!isArcane) await runCommand('fuser', { params: ['-k', '16125/tcp'], runAsRoot: true, timeout: 8000, logError: false });
-   await runShellCommand('DEBIAN_FRONTEND=noninteractive apt-get install fluxbench -y < /dev/null', { runAsRoot: true, timeout: 180000 });
+   await runShellCommand('DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install fluxbench -y < /dev/null', { runAsRoot: true, timeout: 480000 });
    await sleep(2 * 1_000);
    if (isArcane) await runCommand('systemctl', { params: ['start', 'fluxbenchd.service'], runAsRoot: true, timeout: 30000 });
    await runCommand('systemctl', { params: ['start', '--no-block', fluxdServiceName], runAsRoot: true, timeout: 30000 });
