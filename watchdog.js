@@ -1103,8 +1103,8 @@ async function flux_check() {
   ? "fluxbenchd.service"
   : "zelcash.service";
 
-  // --no-block: fluxos is a notify unit, active only once FluxOS reports
-  // ready, which can be minutes after a restart.
+  // --no-block: fluxos is a notify unit ordered after fluxd, so its start
+  // returns only once fluxd and then FluxOS have reported ready.
   const fluxOsRestartCmd = isArcane
     ? "sudo systemctl restart --no-block fluxos.service"
     : "pm2 restart flux";
@@ -1384,7 +1384,7 @@ if (zelback_status == "" || typeof zelback_status == "undefined"){
 } else {
 
   if (zelback_status == "disconnected"){
-   if (isArcane && fluxosUnitStarting(await runShellCommand('systemctl show fluxos.service -p ActiveState --value', { timeout: 5000 }))) {
+   if (isArcane && fluxosUnitStarting(await runShellCommand('systemctl show fluxos.service -p ActiveState -p Job', { timeout: 5000 }))) {
     console.log('FluxOS status = starting');
    } else {
     ++disc_count;
@@ -1414,7 +1414,6 @@ if (zelback_status == "" || typeof zelback_status == "undefined"){
 
        if ( disc_count == 2 ){
         await runShellCommand(fluxOsRestartCmd, { timeout: 30000 });
-        await runCommand('systemctl', { params: ['restart', '--no-block', fluxdServiceName], runAsRoot: true, timeout: 30000 });
         await sleep(2 * 1_000);
         console.log(data_time_utc+' => FluxOS restarting...');
         await discord_hook("FluxOS restarted!",web_hook_url,ping,'Fix Action','#FFFF00','Info','watchdog_fix1.png',label);
