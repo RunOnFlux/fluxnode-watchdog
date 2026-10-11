@@ -1122,7 +1122,7 @@ async function flux_check() {
   console.log('=================================================================');
 
 let update_info = (await runShellCommand("ps -C apt,apt-get,dpkg >/dev/null && echo 'installing software' || echo 'all clear'", { timeout: 30000 })).stdout;
-if ( update_info == "installing software" ) {
+if ( update_info.trim() == "installing software" ) {
   console.log('Update detected...');
   console.log('Watchdog in sleep mode => '+data_time_utc);
   console.log('=================================================================');
