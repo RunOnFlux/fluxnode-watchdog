@@ -124,7 +124,6 @@ const historyFilePath = path.join(__dirname, 'history.json');
 
 let arcaneVersionHistory = '';
 let arcaneVersionHumanHistory = '';
-let debounceTimeout;
 
 let sync_lock = 0;
 let tire_lock = 0;
@@ -208,7 +207,6 @@ let cloudUIChecked = false;
 // a command that is certain to fail.
 function cloudUiApiBaseUrl() {
   try {
-    // eslint-disable-next-line global-require, import/no-dynamic-require
     const fluxOsConfig = require(path.join(fluxOsRootDir, 'ZelBack', 'config', 'default.js'));
 
     return (fluxOsConfig.github && fluxOsConfig.github.apiBaseUrl) || null;
@@ -285,7 +283,7 @@ function checkIfValidIP(str) {
 async function Myip() {
   const check_list = ['ifconfig.me', 'api4.my-ip.io/ip', 'checkip.amazonaws.com', 'api.ipify.org'];
   let MyIP = null;
-  for (const [index, val] of check_list.entries()) {
+  for (const val of check_list) {
     const { stdout } = await runShellCommand(
       `curl -sk -m 10 https://${val} | tr -dc '[:alnum:].'`,
       { timeout: 15000 },
@@ -981,7 +979,7 @@ async function auto_update() {
           if (isArcane) await sleep(5 * 1_000);
           await runShellCommand(fluxOsStartCmd, { timeout: 30000 });
           await sleep(20 * 1_000);
-          let zelflux_lv = (
+          const zelflux_lv = (
             await runShellCommand(`jq -r '.version' ${fluxOsPkgFile}`, { timeout: 30000 })
           ).stdout;
           if (zelflux_remote_version.trim() == zelflux_lv.trim()) {
@@ -1019,7 +1017,7 @@ async function auto_update() {
   const cloudui_dir = path.join(fluxOsRootDir, 'CloudUI');
   const cloudui_local_version_file = path.join(cloudui_dir, 'version');
   if (fs.existsSync(cloudui_dir) && fs.existsSync(cloudui_local_version_file)) {
-    let cloudui_release_info = (
+    const cloudui_release_info = (
       await runShellCommand(
         'curl -sS -m 10 https://api.github.com/repos/RunOnFlux/fluxos-frontend/releases/latest',
         { timeout: 12000 },
@@ -1038,7 +1036,7 @@ async function auto_update() {
           cloudui_remote_hash = dist_asset.digest.replace('sha256:', '');
         }
       }
-    } catch (e) {
+    } catch {
       console.log('FluxCloud UI: Failed to parse release info');
     }
 
@@ -1085,8 +1083,8 @@ async function auto_update() {
   // Flux daemon auto-update (always enabled for non-Arcane, config-dependent for Arcane)
   if (!isArcane || config.zelcash_update == '1') {
     const flux_versions = await aptVersions('flux');
-    let zelcash_remote_version = flux_versions.candidate;
-    let zelcash_local_version = flux_versions.installed;
+    const zelcash_remote_version = flux_versions.candidate;
+    const zelcash_local_version = flux_versions.installed;
     console.log(
       `Flux daemon current: ${zelcash_remote_version.trim()} installed: ${zelcash_local_version.trim()}`,
     );
@@ -1097,7 +1095,7 @@ async function auto_update() {
         console.log('=================================================================');
         console.log('Local version: ' + zelcash_local_version.trim());
         console.log('Remote version: ' + zelcash_remote_version.trim());
-        let zelcash_dpkg_version_before = (
+        const zelcash_dpkg_version_before = (
           await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, {
             timeout: 30000,
           })
@@ -1120,7 +1118,7 @@ async function auto_update() {
           'DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install flux -y < /dev/null',
           { runAsRoot: true, timeout: 480000 },
         );
-        let zelcash_dpkg_version_after = (
+        const zelcash_dpkg_version_after = (
           await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, {
             timeout: 30000,
           })
@@ -1170,8 +1168,8 @@ async function auto_update() {
   // Fluxbench auto-update (always enabled for non-Arcane, config-dependent for Arcane)
   if (!isArcane || config.zelbench_update == '1') {
     const fluxbench_versions = await aptVersions('fluxbench');
-    let zelbench_remote_version = fluxbench_versions.candidate;
-    let zelbench_local_version = fluxbench_versions.installed;
+    const zelbench_remote_version = fluxbench_versions.candidate;
+    const zelbench_local_version = fluxbench_versions.installed;
 
     console.log(
       `Fluxbench current: ${zelbench_remote_version.trim()} installed: ${zelbench_local_version.trim()}`,
@@ -1186,7 +1184,7 @@ async function auto_update() {
         console.log('Remote version: ' + zelbench_remote_version.trim());
         console.log('=================================================================');
 
-        let zelbench_dpkg_version_before = (
+        const zelbench_dpkg_version_before = (
           await runShellCommand(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`, {
             timeout: 30000,
           })
@@ -1235,7 +1233,7 @@ async function auto_update() {
           timeout: 30000,
         });
 
-        let zelbench_dpkg_version_after = (
+        const zelbench_dpkg_version_after = (
           await runShellCommand(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`, {
             timeout: 30000,
           })
@@ -1332,7 +1330,7 @@ async function flux_check() {
   console.log('UTC: ' + data_time_utc + ' | LOCAL: ' + local);
   console.log('=================================================================');
 
-  let update_info = (
+  const update_info = (
     await runShellCommand(
       "ps -C apt,apt-get,dpkg >/dev/null && echo 'installing software' || echo 'all clear'",
       { timeout: 30000 },
@@ -1800,8 +1798,7 @@ async function flux_check() {
     }
   }
 
-  if (zelbench_time == 'null' || zelbench_time == '' || typeof zelbench_time == 'undefined') {
-  } else {
+  if (zelbench_time != 'null' && zelbench_time != '' && typeof zelbench_time != 'undefined') {
     const durationInMinutes = '30';
     const timestamp = moment.unix(Number(zelbench_time));
     const bench_local_time = timestamp.format('DD/MM/YYYY HH:mm:ss');
@@ -1816,11 +1813,10 @@ async function flux_check() {
   }
 
   if (
-    zelcash_last_paid_height == 'null' ||
-    zelcash_last_paid_height == '' ||
-    typeof zelcash_last_paid_height == 'undefined'
+    zelcash_last_paid_height != 'null' &&
+    zelcash_last_paid_height != '' &&
+    typeof zelcash_last_paid_height != 'undefined'
   ) {
-  } else {
     console.log('Last paid hight = ' + zelcash_last_paid_height);
   }
 
@@ -1832,8 +1828,7 @@ async function flux_check() {
     console.log('Last paid time = ' + paid_local_time);
   }
 
-  if (activesince == 'null' || activesince == '' || typeof activesince == 'undefined') {
-  } else {
+  if (activesince != 'null' && activesince != '' && typeof activesince != 'undefined') {
     const timestamp_active = moment.unix(Number(activesince));
     const active_local_time = timestamp_active.format('DD/MM/YYYY HH:mm:ss');
     console.log('Active since = ' + active_local_time);
