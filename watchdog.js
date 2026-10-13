@@ -1042,6 +1042,8 @@ if (!isArcane || config.zelbench_update == "1") {
    await runShellCommand('DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install fluxbench -y < /dev/null', { runAsRoot: true, timeout: 480000 });
    await sleep(2 * 1_000);
    if (isArcane) await runCommand('systemctl', { params: ['start', 'fluxbenchd.service'], runAsRoot: true, timeout: 30000 });
+   // An image whose fluxos.service requires fluxbenchd stopped FluxOS with it.
+   if (isArcane) await runCommand('systemctl', { params: ['start', '--no-block', 'fluxos.service'], runAsRoot: true, timeout: 30000 });
    await runCommand('systemctl', { params: ['start', '--no-block', fluxdServiceName], runAsRoot: true, timeout: 30000 });
 
    let zelbench_dpkg_version_after = (await runShellCommand(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`, { timeout: 30000 })).stdout;
