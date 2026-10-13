@@ -1,11 +1,11 @@
 /**
  * What systemd says about fluxos.service.
  *
- * On Arcane, fluxos is a notify unit ordered after fluxd: its start waits in a
- * queued job until fluxd is ready, then the unit is `activating` until its API
- * listens. Waiting, the unit is `inactive` with that job. Either way a FluxOS
- * that does not answer is starting, not disconnected. Under pm2 there is no
- * unit state to read.
+ * On Arcane, fluxos is a notify unit ordered after the units it reads at
+ * startup (mongod, syncthing, fluxbenchd): its start waits in a queued job until
+ * they are ready, then the unit is `activating` until its API listens. Waiting,
+ * the unit is `inactive` with that job. Either way a FluxOS that does not answer
+ * is starting, not disconnected. Under pm2 there is no unit state to read.
  *
  * Only the first attempt since the unit was last started counts. systemd's own
  * restarts after a failure are `activating` too, both while it waits to restart

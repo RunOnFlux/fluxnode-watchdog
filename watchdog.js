@@ -1103,8 +1103,8 @@ async function flux_check() {
   ? "fluxbenchd.service"
   : "zelcash.service";
 
-  // --no-block: fluxos is a notify unit ordered after fluxd, so its start
-  // returns only once fluxd and then FluxOS have reported ready.
+  // --no-block: fluxos is a notify unit, so its start returns only once FluxOS
+  // and every unit it is ordered after have reported ready.
   const fluxOsRestartCmd = isArcane
     ? "sudo systemctl restart --no-block fluxos.service"
     : "pm2 restart flux";
