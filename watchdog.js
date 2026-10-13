@@ -1384,7 +1384,7 @@ if (zelback_status == "" || typeof zelback_status == "undefined"){
 } else {
 
   if (zelback_status == "disconnected"){
-   if (isArcane && fluxosUnitStarting(await runShellCommand('systemctl show fluxos.service -p ActiveState -p Job', { timeout: 5000 }))) {
+   if (isArcane && fluxosUnitStarting(await runShellCommand('systemctl show fluxos.service -p ActiveState -p SubState -p Job -p NRestarts', { timeout: 5000 }))) {
     console.log('FluxOS status = starting');
    } else {
     ++disc_count;
@@ -1434,7 +1434,7 @@ if (zelback_status == "" || typeof zelback_status == "undefined"){
   } else {
     console.log('FluxOS status = '+zelback_status);
 
-    if (  disc_count == 2 ) {
+    if ( lock_zelback == 1 ) {
       await discord_hook("FluxOS connection fixed!",web_hook_url,ping,'Fix Info','#1F8B4C','Info','watchdog_fixed2.png',label);
 
      // FluxOS fixed notification telegram
