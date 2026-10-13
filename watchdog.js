@@ -872,8 +872,9 @@ async function auto_update() {
        const git = `git -C ${fluxOsRootDir}`;
        const { error: fetchError } = await runShellCommand(`${git} fetch`, { timeout: 120000 });
        const { stdout: head_before } = await runShellCommand(`${git} rev-parse HEAD`, { timeout: 5000 });
-       const { stdout: upstream } = await runShellCommand(`${git} rev-parse @{u}`, { timeout: 5000 });
-       if (fetchError || !upstream.trim() || upstream.trim() === head_before.trim()) {
+       // Commits upstream that HEAD lacks; a branch's own local commits are not counted.
+       const { stdout: behind } = await runShellCommand(`${git} rev-list --count HEAD..@{u}`, { timeout: 5000 });
+       if (fetchError || !(Number(behind.trim()) > 0)) {
          console.log(fetchError
            ? 'FluxOS update skipped: fetch failed'
            : 'FluxOS update skipped: nothing new on this branch');
