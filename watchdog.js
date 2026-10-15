@@ -16,6 +16,7 @@ const { bandwidthReport } = require('./bandwidth_report');
 const { compareVersions } = require('./versions');
 const { discordPayload, sendDiscord, sendTelegram } = require('./alerts');
 const { simulateInstallCommand, aptInstallPlan, updateServices } = require('./apt_plan');
+const { fluxdChain, syncCheckApplies } = require('./fluxd_chain');
 
 const execFilePromise = promisify(execFile);
 
@@ -127,6 +128,8 @@ let arcaneVersionHistory = '';
 let arcaneVersionHumanHistory = '';
 
 let sync_lock = 0;
+// fluxd's chain, read once fluxd answers; null until then.
+let fluxd_chain = null;
 let tire_lock = 0;
 let lock_zelback = 0;
 let zelcashd_counter = 0;
@@ -2069,11 +2072,23 @@ async function flux_check() {
     last_low_eps_benchmark_time = 0;
   }
   if (zelcash_height != '' && typeof zelcash_height !== 'undefined' && isNumber(zelcash_height)) {
-    const skip_sync = between(1, 4);
-    if (skip_sync > 2) {
-      await Check_Sync(zelcash_height, data_time_utc);
-    } else {
-      console.log('Sync check skipped: ' + skip_sync + ' <= 2');
+    if (fluxd_chain === null) {
+      fluxd_chain = fluxdChain(
+        await runShellCommand(`${daemon_cli} getblockchaininfo`, { timeout: 60000 }),
+      );
+      if (fluxd_chain !== null && !syncCheckApplies(fluxd_chain)) {
+        console.log(
+          `Sync check off: the explorers it compares with serve mainnet, and fluxd is on ${fluxd_chain}`,
+        );
+      }
+    }
+    if (syncCheckApplies(fluxd_chain)) {
+      const skip_sync = between(1, 4);
+      if (skip_sync > 2) {
+        await Check_Sync(zelcash_height, data_time_utc);
+      } else {
+        console.log('Sync check skipped: ' + skip_sync + ' <= 2');
+      }
     }
   }
   console.log(
