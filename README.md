@@ -64,8 +64,6 @@ module.exports = {
 
 * Telegram integration
 
-![screen6](https://fluxnodeservice.com/telegram.png)
-
 <b>How correct start, stop, restart watchdog</b>
 * Start -> pm2 start watchdog <b>--watch</b> 
 * Stop -> pm2 stop watchdog  

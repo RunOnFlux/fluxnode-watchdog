@@ -343,16 +343,14 @@ async function discord_hook(
             .setTitle(`:loudspeaker: **FluxNode ${title}**`)
             .addField('URL:', `http://${node_ip}:${ui_port}`)
             .addField(`${field_name}:`, node_msg)
-            .setColor(`${color}`)
-            .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`);
+            .setColor(`${color}`);
         } else {
           msg = new webhook.MessageBuilder()
             .setTitle(`:loudspeaker: **FluxNode ${title}**`)
             .addField('Name:', `${label}`)
             .addField('URL:', `http://${node_ip}:${ui_port}`)
             .addField(`${field_name}:`, node_msg)
-            .setColor(`${color}`)
-            .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`);
+            .setColor(`${color}`);
         }
       } else {
         if (typeof label == 'undefined') {
@@ -361,7 +359,6 @@ async function discord_hook(
             .addField('URL:', `http://${node_ip}:${ui_port}`)
             .addField(`${field_name}:`, node_msg)
             .setColor(`${color}`)
-            .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`)
             .setText(`Ping: <@${ping}>`);
         } else {
           msg = new webhook.MessageBuilder()
@@ -370,7 +367,6 @@ async function discord_hook(
             .addField('URL:', `http://${node_ip}:${ui_port}`)
             .addField(`${field_name}:`, node_msg)
             .setColor(`${color}`)
-            .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`)
             .setText(`Ping: <@${ping}>`);
         }
       }
