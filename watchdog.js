@@ -15,6 +15,7 @@ const { waitForFluxOs } = require('./fluxos_ready');
 const { fluxosUnitStarting } = require('./fluxos_state');
 const { bandwidthReport } = require('./bandwidth_report');
 const { compareVersions } = require('./versions');
+const { aptInstallPlan } = require('./apt_plan');
 
 const execFilePromise = promisify(execFile);
 
@@ -840,6 +841,58 @@ async function auto_update() {
 
   const fluxOsPkgFile = path.join(fluxOsRootDir, 'package.json');
 
+  // A release (x.y.0) is announced; a patch is installed quietly.
+  const announceFluxdUpdate = async (version) => {
+    if (!version.trim().endsWith('.0')) return;
+    await discord_hook(
+      `Fluxnode daemon updated!\nVersion: **${version}**`,
+      web_hook_url,
+      ping,
+      'Update',
+      '#1F8B4C',
+      'Info',
+      'watchdog_update1.png',
+      label,
+    );
+    const emoji_title = '\u{23F0}';
+    const emoji_update = '\u{1F504}';
+    const info_type = 'New Update ' + emoji_update;
+    const field_type = 'Info: ';
+    const msg_text = 'Fluxnode Daemon updated! \n<b>Version: </b>' + version;
+    await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
+  };
+  const announceFluxbenchUpdate = async (version) => {
+    if (!version.trim().endsWith('.0')) return;
+    await discord_hook(
+      `Fluxnode benchmark updated!\nVersion: **${version}**`,
+      web_hook_url,
+      ping,
+      'Update',
+      '#1F8B4C',
+      'Info',
+      'watchdog_update1.png',
+      label,
+    );
+    const emoji_title = '\u{23F0}';
+    const emoji_update = '\u{1F504}';
+    const info_type = 'New Update ' + emoji_update;
+    const field_type = 'Info: ';
+    const msg_text = 'Fluxnode Benchmark updated! \n</pre><b>Version: </b>' + version;
+    await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
+  };
+  const installedVersion = async (pkg) =>
+    (
+      await runShellCommand(`dpkg-query -W -f='\${Version}' ${pkg}`, { timeout: 30000 })
+    ).stdout.trim();
+  // fluxd and fluxbench each require the other's matching release, so apt may
+  // have one before the other: an update stops services only when apt would
+  // install the package and remove nothing.
+  const installPlan = async (pkg) =>
+    aptInstallPlan(
+      await runShellCommand(`apt-get -s install ${pkg} < /dev/null`, { timeout: 120000 }),
+      pkg,
+    );
+
   // apt decides what an update installs, so it also decides whether there is
   // one: its candidate is never below the installed version, so a candidate
   // that differs is an upgrade. The package lists are refreshed once per check.
@@ -1089,7 +1142,12 @@ async function auto_update() {
       `Flux daemon current: ${zelcash_remote_version.trim()} installed: ${zelcash_local_version.trim()}`,
     );
     if (zelcash_remote_version.trim() != '' && zelcash_local_version.trim() != '') {
-      if (flux_versions.upgrade) {
+      const flux_plan = flux_versions.upgrade ? await installPlan('flux') : null;
+      if (flux_plan && !flux_plan.installable) {
+        console.log(
+          `Flux daemon ${zelcash_remote_version.trim()} is not installed: ${flux_plan.reason}`,
+        );
+      } else if (flux_plan) {
         component_update = 1;
         console.log('New Flux daemon version detected:');
         console.log('=================================================================');
@@ -1100,6 +1158,7 @@ async function auto_update() {
             timeout: 30000,
           })
         ).stdout;
+        const fluxbench_before_flux = await installedVersion('fluxbench');
         await runCommand('systemctl', {
           params: ['stop', fluxdServiceName],
           runAsRoot: true,
@@ -1123,6 +1182,11 @@ async function auto_update() {
             timeout: 30000,
           })
         ).stdout;
+        // apt upgrades fluxbench with fluxd when fluxd's release requires it.
+        const fluxbench_after_flux = await installedVersion('fluxbench');
+        if (fluxbench_after_flux && fluxbench_after_flux !== fluxbench_before_flux) {
+          await announceFluxbenchUpdate(fluxbench_after_flux);
+        }
         await sleep(2 * 1_000);
         await runCommand('systemctl', {
           params: ['start', '--no-block', fluxdServiceName],
@@ -1133,26 +1197,7 @@ async function auto_update() {
           zelcash_dpkg_version_before !== zelcash_dpkg_version_after &&
           zelcash_dpkg_version_after != ''
         ) {
-          if (zelcash_dpkg_version_after.trim().endsWith('.0')) {
-            await discord_hook(
-              `Fluxnode daemon updated!\nVersion: **${zelcash_dpkg_version_after}**`,
-              web_hook_url,
-              ping,
-              'Update',
-              '#1F8B4C',
-              'Info',
-              'watchdog_update1.png',
-              label,
-            );
-            // Update notification daemon
-            const emoji_title = '\u{23F0}';
-            const emoji_update = '\u{1F504}';
-            const info_type = 'New Update ' + emoji_update;
-            const field_type = 'Info: ';
-            const msg_text =
-              'Fluxnode Daemon updated! \n<b>Version: </b>' + zelcash_dpkg_version_after;
-            await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
-          }
+          await announceFluxdUpdate(zelcash_dpkg_version_after);
           console.log('Update successfully.');
           console.log(' ');
           await sleep(2 * 1_000);
@@ -1176,7 +1221,12 @@ async function auto_update() {
     );
 
     if (zelbench_remote_version.trim() != '' && zelbench_local_version.trim() != '') {
-      if (fluxbench_versions.upgrade) {
+      const fluxbench_plan = fluxbench_versions.upgrade ? await installPlan('fluxbench') : null;
+      if (fluxbench_plan && !fluxbench_plan.installable) {
+        console.log(
+          `Fluxbench ${zelbench_remote_version.trim()} is not installed: ${fluxbench_plan.reason}`,
+        );
+      } else if (fluxbench_plan) {
         component_update = 1;
         console.log('New Fluxbench version detected:');
         console.log('=================================================================');
@@ -1189,6 +1239,7 @@ async function auto_update() {
             timeout: 30000,
           })
         ).stdout;
+        const flux_before_fluxbench = await installedVersion('flux');
         // For Arcane, we have to stop this as fluxd requires fluxbenchd, as it will
         // start it if it's not present. (We need to remove this from fluxd source code)
         await runCommand('systemctl', {
@@ -1238,32 +1289,17 @@ async function auto_update() {
             timeout: 30000,
           })
         ).stdout;
+        // apt upgrades fluxd with fluxbench when fluxbench's release requires it.
+        const flux_after_fluxbench = await installedVersion('flux');
+        if (flux_after_fluxbench && flux_after_fluxbench !== flux_before_fluxbench) {
+          await announceFluxdUpdate(flux_after_fluxbench);
+        }
 
         if (
           zelbench_dpkg_version_before !== zelbench_dpkg_version_after &&
           zelbench_dpkg_version_after != ''
         ) {
-          if (zelbench_dpkg_version_after.trim().endsWith('.0')) {
-            await discord_hook(
-              `Fluxnode benchmark updated!\nVersion: **${zelbench_dpkg_version_after}**`,
-              web_hook_url,
-              ping,
-              'Update',
-              '#1F8B4C',
-              'Info',
-              'watchdog_update1.png',
-              label,
-            );
-
-            // Update notification benchmark telegram
-            const emoji_title = '\u{23F0}';
-            const emoji_update = '\u{1F504}';
-            const info_type = 'New Update ' + emoji_update;
-            const field_type = 'Info: ';
-            const msg_text =
-              'Fluxnode Benchmark updated! \n</pre><b>Version: </b>' + zelbench_dpkg_version_after;
-            await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
-          }
+          await announceFluxbenchUpdate(zelbench_dpkg_version_after);
 
           console.log('Update successfully.');
           console.log(' ');
