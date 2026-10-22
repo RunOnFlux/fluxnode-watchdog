@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
-const { aptInstallPlan, updateServices } = require('../apt_plan');
+const { simulateInstallCommand, aptInstallPlan, updateServices } = require('../apt_plan');
 
 // apt-get -s output captured from apt on Ubuntu 26.04, a local repository and
 // an installed flux 9.1.0 and fluxbench 6.3.1.
@@ -136,4 +136,11 @@ test("on a legacy node every install restarts fluxd's service only", () => {
       pkg,
     );
   }
+});
+
+test("the simulation runs in the C locale, so apt's messages are read the same on every node", () => {
+  assert.strictEqual(
+    simulateInstallCommand('flux'),
+    'LC_ALL=C apt-get -s install flux < /dev/null',
+  );
 });
