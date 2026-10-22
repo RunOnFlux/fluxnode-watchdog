@@ -15,7 +15,7 @@ const { waitForFluxOs } = require('./fluxos_ready');
 const { fluxosUnitStarting } = require('./fluxos_state');
 const { bandwidthReport } = require('./bandwidth_report');
 const { compareVersions } = require('./versions');
-const { aptInstallPlan } = require('./apt_plan');
+const { aptInstallPlan, updateServices } = require('./apt_plan');
 
 const execFilePromise = promisify(execFile);
 
@@ -888,6 +888,11 @@ async function auto_update() {
       await runShellCommand(`apt-get -s install ${pkg} < /dev/null`, { timeout: 120000 }),
       pkg,
     );
+  const systemctl = async (steps) => {
+    for (const params of steps) {
+      await runCommand('systemctl', { params, runAsRoot: true, timeout: 30000 });
+    }
+  };
 
   // apt decides what an update installs, so it also decides whether there is
   // one: its candidate is never below the installed version, so a candidate
@@ -1155,11 +1160,8 @@ async function auto_update() {
           })
         ).stdout;
         const fluxbench_before_flux = await installedVersion('fluxbench');
-        await runCommand('systemctl', {
-          params: ['stop', fluxdServiceName],
-          runAsRoot: true,
-          timeout: 30000,
-        });
+        const flux_services = updateServices(flux_plan, { isArcane, fluxdServiceName });
+        await systemctl(flux_services.stop);
         if (!isArcane)
           await runCommand('fuser', {
             params: ['-k', '16125/tcp'],
@@ -1184,11 +1186,7 @@ async function auto_update() {
           await announceFluxbenchUpdate(fluxbench_after_flux);
         }
         await sleep(2 * 1_000);
-        await runCommand('systemctl', {
-          params: ['start', '--no-block', fluxdServiceName],
-          runAsRoot: true,
-          timeout: 30000,
-        });
+        await systemctl(flux_services.start);
         if (
           zelcash_dpkg_version_before !== zelcash_dpkg_version_after &&
           zelcash_dpkg_version_after != ''
@@ -1236,19 +1234,8 @@ async function auto_update() {
           })
         ).stdout;
         const flux_before_fluxbench = await installedVersion('flux');
-        // For Arcane, we have to stop this as fluxd requires fluxbenchd, as it will
-        // start it if it's not present. (We need to remove this from fluxd source code)
-        await runCommand('systemctl', {
-          params: ['stop', fluxdServiceName],
-          runAsRoot: true,
-          timeout: 30000,
-        });
-        if (isArcane)
-          await runCommand('systemctl', {
-            params: ['stop', 'fluxbenchd.service'],
-            runAsRoot: true,
-            timeout: 30000,
-          });
+        const fluxbench_services = updateServices(fluxbench_plan, { isArcane, fluxdServiceName });
+        await systemctl(fluxbench_services.stop);
         if (!isArcane)
           await runCommand('fuser', {
             params: ['-k', '16125/tcp'],
@@ -1261,24 +1248,7 @@ async function auto_update() {
           { runAsRoot: true, timeout: 480000 },
         );
         await sleep(2 * 1_000);
-        if (isArcane)
-          await runCommand('systemctl', {
-            params: ['start', 'fluxbenchd.service'],
-            runAsRoot: true,
-            timeout: 30000,
-          });
-        // An image whose fluxos.service requires fluxbenchd stopped FluxOS with it.
-        if (isArcane)
-          await runCommand('systemctl', {
-            params: ['start', '--no-block', 'fluxos.service'],
-            runAsRoot: true,
-            timeout: 30000,
-          });
-        await runCommand('systemctl', {
-          params: ['start', '--no-block', fluxdServiceName],
-          runAsRoot: true,
-          timeout: 30000,
-        });
+        await systemctl(fluxbench_services.start);
 
         const zelbench_dpkg_version_after = (
           await runShellCommand(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`, {
