@@ -15,6 +15,7 @@ const { waitForFluxOs } = require('./fluxos_ready');
 const { fluxosUnitStarting } = require('./fluxos_state');
 const { bandwidthReport } = require('./bandwidth_report');
 const { compareVersions } = require('./versions');
+const { runCloudUiUpdate, failureReason } = require('./cloudui_update');
 
 const execFilePromise = promisify(execFile);
 
@@ -219,6 +220,18 @@ function cloudUiApiBaseUrl() {
   }
 }
 
+// Runs FluxOS's CloudUI update, and logs why when it fails.
+async function updateCloudUI(apiBaseUrl) {
+  const result = await runCloudUiUpdate({ fluxOsRootDir, apiBaseUrl });
+  if (!result.ok) {
+    console.log(`CloudUI update failed: ${failureReason(result)}`);
+    const lastLines = result.output.trim().split('\n').slice(-5).join('\n');
+    if (lastLines) console.log(lastLines);
+  }
+
+  return result.ok;
+}
+
 async function checkCloudUI() {
   const cloudUIDir = path.join(fluxOsRootDir, 'CloudUI');
   if (fs.existsSync(cloudUIDir)) {
@@ -239,10 +252,9 @@ async function checkCloudUI() {
       return;
     }
     console.log(`checkCloudUI: FluxOS version ${version} >= 8.0.0. Downloading CloudUI...`);
-    await runShellCommand(`cd ${fluxOsRootDir} && npm run update:cloudui -- ${apiBaseUrl}`, {
-      timeout: 120000,
-    });
-    console.log('checkCloudUI: CloudUI download completed.');
+    if (await updateCloudUI(apiBaseUrl)) {
+      console.log('checkCloudUI: CloudUI download completed.');
+    }
   } else {
     console.log('checkCloudUI: FluxOS version < 8.0.0 or not detected. Skipping CloudUI download.');
   }
@@ -1009,10 +1021,11 @@ async function auto_update() {
     }
   }
   await checkCloudUI();
-  // FluxCloud UI version check (only if CloudUI is installed)
+  // FluxCloud UI version check (only if CloudUI is installed). A CloudUI without its
+  // version file has no installed hash, so it never matches the release and is updated.
   const cloudui_dir = path.join(fluxOsRootDir, 'CloudUI');
   const cloudui_local_version_file = path.join(cloudui_dir, 'version');
-  if (fs.existsSync(cloudui_dir) && fs.existsSync(cloudui_local_version_file)) {
+  if (fs.existsSync(cloudui_dir)) {
     const cloudui_release_info = (
       await runShellCommand(
         'curl -sS -m 10 https://api.github.com/repos/RunOnFlux/fluxos-frontend/releases/latest',
@@ -1036,7 +1049,9 @@ async function auto_update() {
       console.log('FluxCloud UI: Failed to parse release info');
     }
 
-    const cloudui_local_hash = fs.readFileSync(cloudui_local_version_file, 'utf8').trim();
+    const cloudui_local_hash = fs.existsSync(cloudui_local_version_file)
+      ? fs.readFileSync(cloudui_local_version_file, 'utf8').trim()
+      : '';
 
     console.log(
       `FluxCloud UI current: ${cloudui_remote_tag} (${cloudui_remote_hash.substring(0, 8) || 'N/A'}) installed: ${cloudui_local_hash.substring(0, 8) || 'N/A'}`,
@@ -1057,12 +1072,7 @@ async function auto_update() {
       if (!cloudui_api_base_url) {
         console.log('No API host available, skipping the FluxCloud UI update.');
       } else {
-        (
-          await runShellCommand(
-            `cd ${fluxOsRootDir} && npm run update:cloudui -- ${cloudui_api_base_url}`,
-            { timeout: 120000 },
-          )
-        ).stdout;
+        await updateCloudUI(cloudui_api_base_url);
       }
       await sleep(5 * 1_000);
       let cloudui_lv = '';
