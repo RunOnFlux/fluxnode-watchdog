@@ -15,7 +15,7 @@ const { waitForFluxOs } = require('./fluxos_ready');
 const { fluxosUnitStarting } = require('./fluxos_state');
 const { bandwidthReport } = require('./bandwidth_report');
 const { compareVersions } = require('./versions');
-const { aptInstallPlan, updateServices } = require('./apt_plan');
+const { simulateInstallCommand, aptInstallPlan, updateServices } = require('./apt_plan');
 
 const execFilePromise = promisify(execFile);
 
@@ -884,10 +884,7 @@ async function auto_update() {
   // have one before the other: an update stops services only when apt would
   // install the package and remove nothing.
   const installPlan = async (pkg) =>
-    aptInstallPlan(
-      await runShellCommand(`apt-get -s install ${pkg} < /dev/null`, { timeout: 120000 }),
-      pkg,
-    );
+    aptInstallPlan(await runShellCommand(simulateInstallCommand(pkg), { timeout: 120000 }), pkg);
   const systemctl = async (steps) => {
     for (const params of steps) {
       await runCommand('systemctl', { params, runAsRoot: true, timeout: 30000 });

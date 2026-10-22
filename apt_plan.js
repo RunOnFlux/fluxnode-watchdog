@@ -1,4 +1,14 @@
 /**
+ * The simulation aptInstallPlan reads. It runs in the C locale, so apt's
+ * messages, which aptInstallPlan matches, are the same on every node.
+ * @param {string} pkg
+ * @returns {string} shell command
+ */
+function simulateInstallCommand(pkg) {
+  return `LC_ALL=C apt-get -s install ${pkg} < /dev/null`;
+}
+
+/**
  * What `apt-get -s install <pkg>` would do, read from its output.
  *
  * The simulation prints one line per action: `Inst <pkg> [<installed>] (<new> ...)`,
@@ -62,4 +72,4 @@ function updateServices(plan, { isArcane, fluxdServiceName }) {
   return { stop, start };
 }
 
-module.exports = { aptInstallPlan, updateServices };
+module.exports = { simulateInstallCommand, aptInstallPlan, updateServices };
