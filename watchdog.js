@@ -128,8 +128,6 @@ let arcaneVersionHistory = '';
 let arcaneVersionHumanHistory = '';
 
 let sync_lock = 0;
-// fluxd's chain, read once fluxd answers; null until then.
-let fluxd_chain = null;
 let tire_lock = 0;
 let lock_zelback = 0;
 let zelcashd_counter = 0;
@@ -2072,23 +2070,22 @@ async function flux_check() {
     last_low_eps_benchmark_time = 0;
   }
   if (zelcash_height != '' && typeof zelcash_height !== 'undefined' && isNumber(zelcash_height)) {
-    if (fluxd_chain === null) {
-      fluxd_chain = fluxdChain(
+    const skip_sync = between(1, 4);
+    if (skip_sync > 2) {
+      // Read each time the check would run, so a fluxd restarted on another chain is
+      // seen at its next check.
+      const chain = fluxdChain(
         await runShellCommand(`${daemon_cli} getblockchaininfo`, { timeout: 60000 }),
       );
-      if (fluxd_chain !== null && !syncCheckApplies(fluxd_chain)) {
+      if (syncCheckApplies(chain)) {
+        await Check_Sync(zelcash_height, data_time_utc);
+      } else if (chain !== null) {
         console.log(
-          `Sync check off: the explorers it compares with serve mainnet, and fluxd is on ${fluxd_chain}`,
+          `Sync check off: the explorers it compares with serve mainnet, and fluxd is on ${chain}`,
         );
       }
-    }
-    if (syncCheckApplies(fluxd_chain)) {
-      const skip_sync = between(1, 4);
-      if (skip_sync > 2) {
-        await Check_Sync(zelcash_height, data_time_utc);
-      } else {
-        console.log('Sync check skipped: ' + skip_sync + ' <= 2');
-      }
+    } else {
+      console.log('Sync check skipped: ' + skip_sync + ' <= 2');
     }
   }
   console.log(
