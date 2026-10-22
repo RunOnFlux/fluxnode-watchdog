@@ -16,7 +16,7 @@ const { bandwidthReport } = require('./bandwidth_report');
 const { compareVersions } = require('./versions');
 const { discordPayload, sendDiscord, sendTelegram } = require('./alerts');
 const { simulateInstallCommand, aptInstallPlan, updateServices } = require('./apt_plan');
-const { fluxdChain, syncCheckApplies } = require('./fluxd_chain');
+const { runSyncCheck } = require('./fluxd_chain');
 
 const execFilePromise = promisify(execFile);
 
@@ -2070,23 +2070,12 @@ async function flux_check() {
     last_low_eps_benchmark_time = 0;
   }
   if (zelcash_height != '' && typeof zelcash_height !== 'undefined' && isNumber(zelcash_height)) {
-    const skip_sync = between(1, 4);
-    if (skip_sync > 2) {
-      // Read each time the check would run, so a fluxd restarted on another chain is
-      // seen at its next check.
-      const chain = fluxdChain(
-        await runShellCommand(`${daemon_cli} getblockchaininfo`, { timeout: 60000 }),
-      );
-      if (syncCheckApplies(chain)) {
-        await Check_Sync(zelcash_height, data_time_utc);
-      } else if (chain !== null) {
-        console.log(
-          `Sync check off: the explorers it compares with serve mainnet, and fluxd is on ${chain}`,
-        );
-      }
-    } else {
-      console.log('Sync check skipped: ' + skip_sync + ' <= 2');
-    }
+    await runSyncCheck({
+      roll: () => between(1, 4),
+      readChainInfo: () => runShellCommand(`${daemon_cli} getblockchaininfo`, { timeout: 60000 }),
+      checkSync: () => Check_Sync(zelcash_height, data_time_utc),
+      log: console.log,
+    });
   }
   console.log(
     '============================================================[' +
