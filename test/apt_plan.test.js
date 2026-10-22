@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
-const { aptInstallPlan } = require('../apt_plan');
+const { aptInstallPlan, updateServices } = require('../apt_plan');
 
 // apt-get -s output captured from apt on Ubuntu 26.04, a local repository and
 // an installed flux 9.1.0 and fluxbench 6.3.1.
@@ -82,4 +82,58 @@ test('apt failing without naming a dependency gives its last error line', () => 
     plan.reason,
     'apt refused it: E: Could not get lock /var/lib/dpkg/lock-frontend',
   );
+});
+
+const ARCANE = { isArcane: true, fluxdServiceName: 'fluxd.service' };
+const LEGACY = { isArcane: false, fluxdServiceName: 'zelcash.service' };
+const ok = (stdout) => ({ error: null, stdout, stderr: '' });
+const FLUX_ALONE = `${SIMULATION}The following packages will be upgraded:
+  flux
+1 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+Inst flux [9.1.0] (9.1.1 localhost [amd64])
+Conf flux (9.1.1 localhost [amd64])
+`;
+
+test('on ArcaneOS an install of flux alone restarts fluxd only', () => {
+  assert.deepStrictEqual(updateServices(aptInstallPlan(ok(FLUX_ALONE), 'flux'), ARCANE), {
+    stop: [['stop', 'fluxd.service']],
+    start: [['start', '--no-block', 'fluxd.service']],
+  });
+});
+
+test('on ArcaneOS an install that upgrades fluxbench restarts fluxbenchd and starts FluxOS, whichever package was asked for', () => {
+  for (const pkg of ['flux', 'fluxbench']) {
+    assert.deepStrictEqual(
+      updateServices(aptInstallPlan(ok(BOTH_PUBLISHED), pkg), ARCANE),
+      {
+        stop: [
+          ['stop', 'fluxd.service'],
+          ['stop', 'fluxbenchd.service'],
+        ],
+        start: [
+          ['start', 'fluxbenchd.service'],
+          ['start', '--no-block', 'fluxos.service'],
+          ['start', '--no-block', 'fluxd.service'],
+        ],
+      },
+      pkg,
+    );
+  }
+});
+
+test("on a legacy node every install restarts fluxd's service only", () => {
+  for (const [stdout, pkg] of [
+    [FLUX_ALONE, 'flux'],
+    [BOTH_PUBLISHED, 'flux'],
+    [BOTH_PUBLISHED, 'fluxbench'],
+  ]) {
+    assert.deepStrictEqual(
+      updateServices(aptInstallPlan(ok(stdout), pkg), LEGACY),
+      {
+        stop: [['stop', 'zelcash.service']],
+        start: [['start', '--no-block', 'zelcash.service']],
+      },
+      pkg,
+    );
+  }
 });

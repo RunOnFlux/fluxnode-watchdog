@@ -38,4 +38,28 @@ function aptInstallPlan(result, pkg) {
   return { installable: reason === '', installs, removes, reason };
 }
 
-module.exports = { aptInstallPlan };
+/**
+ * The systemctl calls around an install of `plan`, stops before it and starts
+ * after it, in order. fluxd is always restarted. On ArcaneOS fluxbenchd is its
+ * own service, so an install that upgrades fluxbench, whichever package was
+ * asked for, also restarts fluxbenchd and starts FluxOS, which an image that
+ * requires fluxbenchd stops with it. Elsewhere starting fluxd's service starts
+ * fluxbenchd.
+ * @param {{installs: Object<string, string>}} plan - from aptInstallPlan
+ * @param {{isArcane: boolean, fluxdServiceName: string}} node
+ * @returns {{stop: string[][], start: string[][]}} systemctl arguments
+ */
+function updateServices(plan, { isArcane, fluxdServiceName }) {
+  const fluxbench = isArcane && Boolean(plan.installs.fluxbench);
+  const stop = [['stop', fluxdServiceName]];
+  const start = [];
+  if (fluxbench) {
+    stop.push(['stop', 'fluxbenchd.service']);
+    start.push(['start', 'fluxbenchd.service'], ['start', '--no-block', 'fluxos.service']);
+  }
+  start.push(['start', '--no-block', fluxdServiceName]);
+
+  return { stop, start };
+}
+
+module.exports = { aptInstallPlan, updateServices };
