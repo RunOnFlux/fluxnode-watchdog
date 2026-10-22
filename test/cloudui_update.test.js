@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('node:path');
 
-const { runCloudUiUpdate } = require('../cloudui_update');
+const { runCloudUiUpdate, failureReason } = require('../cloudui_update');
 
 function tempDirs() {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cloudui-update-test-'));
@@ -64,6 +64,7 @@ test('a timeout kills every process the update started and removes its files', a
   });
   assert.strictEqual(result.ok, false);
   assert.strictEqual(result.timedOut, true);
+  assert.strictEqual(failureReason(result), 'timed out after 10 minutes');
   const downloadPid = Number(fs.readFileSync(pidFile, 'utf8'));
   assert.ok(downloadPid > 0);
   await new Promise((r) => setTimeout(r, 200));
@@ -99,7 +100,23 @@ test('reports a failed update and still removes its files', async () => {
   assert.strictEqual(result.timedOut, false);
   assert.strictEqual(result.code, 1);
   assert.match(result.output, /Error: no release/);
+  assert.strictEqual(failureReason(result), 'exited with code 1');
   assert.strictEqual(fs.existsSync(scratchDir), false);
+});
+
+test('reports an update ended by a signal from outside the watchdog', async () => {
+  const { base, scratchDir } = tempDirs();
+  const result = await runCloudUiUpdate({
+    fluxOsRootDir: base,
+    apiBaseUrl: 'https://api.github.com',
+    scratchDir,
+    command: ['sh', '-c', 'kill -TERM $$'],
+  });
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.timedOut, false);
+  assert.strictEqual(result.code, null);
+  assert.strictEqual(result.signal, 'SIGTERM');
+  assert.strictEqual(failureReason(result), 'killed by SIGTERM');
 });
 
 test('reports a command that cannot start', async () => {
@@ -112,5 +129,6 @@ test('reports a command that cannot start', async () => {
   });
   assert.strictEqual(result.ok, false);
   assert.ok(result.error);
+  assert.strictEqual(failureReason(result), result.error.message);
   assert.strictEqual(fs.existsSync(scratchDir), false);
 });
