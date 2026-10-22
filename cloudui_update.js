@@ -101,4 +101,22 @@ function runCloudUiUpdate({
   });
 }
 
-module.exports = { runCloudUiUpdate, CLOUDUI_UPDATE_TIMEOUT_MS, CLOUDUI_SCRATCH_DIR };
+/**
+ * Why an update that did not succeed failed, for the log.
+ * @param {{timedOut: boolean, error: Error|null, signal: string|null, code: number|null}} result
+ * @returns {string}
+ */
+function failureReason(result) {
+  if (result.timedOut) return `timed out after ${CLOUDUI_UPDATE_TIMEOUT_MS / 60_000} minutes`;
+  if (result.error) return result.error.message;
+  if (result.signal) return `killed by ${result.signal}`;
+
+  return `exited with code ${result.code}`;
+}
+
+module.exports = {
+  runCloudUiUpdate,
+  failureReason,
+  CLOUDUI_UPDATE_TIMEOUT_MS,
+  CLOUDUI_SCRATCH_DIR,
+};

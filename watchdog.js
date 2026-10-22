@@ -15,7 +15,7 @@ const { waitForFluxOs } = require('./fluxos_ready');
 const { fluxosUnitStarting } = require('./fluxos_state');
 const { bandwidthReport } = require('./bandwidth_report');
 const { compareVersions } = require('./versions');
-const { runCloudUiUpdate, CLOUDUI_UPDATE_TIMEOUT_MS } = require('./cloudui_update');
+const { runCloudUiUpdate, failureReason } = require('./cloudui_update');
 
 const execFilePromise = promisify(execFile);
 
@@ -224,10 +224,7 @@ function cloudUiApiBaseUrl() {
 async function updateCloudUI(apiBaseUrl) {
   const result = await runCloudUiUpdate({ fluxOsRootDir, apiBaseUrl });
   if (!result.ok) {
-    let reason = `exited with code ${result.code}`;
-    if (result.timedOut) reason = `timed out after ${CLOUDUI_UPDATE_TIMEOUT_MS / 60_000} minutes`;
-    else if (result.error) reason = result.error.message;
-    console.log(`CloudUI update failed: ${reason}`);
+    console.log(`CloudUI update failed: ${failureReason(result)}`);
     const lastLines = result.output.trim().split('\n').slice(-5).join('\n');
     if (lastLines) console.log(lastLines);
   }
