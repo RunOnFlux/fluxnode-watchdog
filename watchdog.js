@@ -1177,13 +1177,13 @@ async function auto_update() {
             timeout: 30000,
           })
         ).stdout;
+        await sleep(2 * 1_000);
+        await systemctl(flux_services.start);
         // apt upgrades fluxbench with fluxd when fluxd's release requires it.
         const fluxbench_after_flux = await installedVersion('fluxbench');
         if (fluxbench_after_flux && fluxbench_after_flux !== fluxbench_before_flux) {
           await announceFluxbenchUpdate(fluxbench_after_flux);
         }
-        await sleep(2 * 1_000);
-        await systemctl(flux_services.start);
         if (
           zelcash_dpkg_version_before !== zelcash_dpkg_version_after &&
           zelcash_dpkg_version_after != ''
