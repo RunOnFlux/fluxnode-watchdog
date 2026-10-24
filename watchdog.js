@@ -4,7 +4,6 @@ const { promisify } = require('util');
 const { execFile } = require('child_process');
 const os = require('os');
 const moment = require('moment');
-const webhook = require('@prince25/discord-webhook-sender');
 const fs = require('fs');
 const fsPromises = require('fs/promises');
 const axios = require('axios');
@@ -15,6 +14,7 @@ const { waitForFluxOs } = require('./fluxos_ready');
 const { fluxosUnitStarting } = require('./fluxos_state');
 const { bandwidthReport } = require('./bandwidth_report');
 const { compareVersions } = require('./versions');
+const { discordPayload, sendDiscord, sendTelegram } = require('./alerts');
 const { simulateInstallCommand, aptInstallPlan, updateServices } = require('./apt_plan');
 
 const execFilePromise = promisify(execFile);
@@ -333,50 +333,19 @@ async function discord_hook(
         ui_port = Number(api_port.trim()) - 1;
       }
 
-      const Hook = new webhook.Webhook(`${web_hook_url}`);
-      Hook.setUsername('Flux Watchdog');
-
-      // Construct the message based on ping and label
-      let msg;
-      if (typeof ping == 'undefined' || ping == '0') {
-        if (typeof label == 'undefined') {
-          msg = new webhook.MessageBuilder()
-            .setTitle(`:loudspeaker: **FluxNode ${title}**`)
-            .addField('URL:', `http://${node_ip}:${ui_port}`)
-            .addField(`${field_name}:`, node_msg)
-            .setColor(`${color}`)
-            .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`);
-        } else {
-          msg = new webhook.MessageBuilder()
-            .setTitle(`:loudspeaker: **FluxNode ${title}**`)
-            .addField('Name:', `${label}`)
-            .addField('URL:', `http://${node_ip}:${ui_port}`)
-            .addField(`${field_name}:`, node_msg)
-            .setColor(`${color}`)
-            .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`);
-        }
-      } else {
-        if (typeof label == 'undefined') {
-          msg = new webhook.MessageBuilder()
-            .setTitle(`:loudspeaker: **FluxNode ${title}**`)
-            .addField('URL:', `http://${node_ip}:${ui_port}`)
-            .addField(`${field_name}:`, node_msg)
-            .setColor(`${color}`)
-            .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`)
-            .setText(`Ping: <@${ping}>`);
-        } else {
-          msg = new webhook.MessageBuilder()
-            .setTitle(`:loudspeaker: **FluxNode ${title}**`)
-            .addField('Name:', `${label}`)
-            .addField('URL:', `http://${node_ip}:${ui_port}`)
-            .addField(`${field_name}:`, node_msg)
-            .setColor(`${color}`)
-            .setThumbnail(`https://fluxnodeservice.com/images/${thumbnail_png}`)
-            .setText(`Ping: <@${ping}>`);
-        }
-      }
-
-      await Hook.send(msg);
+      const fields = [];
+      if (typeof label != 'undefined') fields.push(['Name:', `${label}`]);
+      fields.push(['URL:', `http://${node_ip}:${ui_port}`], [`${field_name}:`, node_msg]);
+      await sendDiscord(
+        web_hook_url,
+        discordPayload({
+          title: `:loudspeaker: **FluxNode ${title}**`,
+          fields,
+          color,
+          thumbnailUrl: `https://fluxnodeservice.com/images/${thumbnail_png}`,
+          ping: typeof ping == 'undefined' || ping == '0' ? undefined : ping,
+        }),
+      );
       console.log('Discord webhook message sent successfully');
     } catch (error) {
       console.error('Error sending Discord webhook message:', error.message);
@@ -769,9 +738,6 @@ async function send_telegram_msg(emoji_title, info_type, field_type, msg_text, l
         ui_port = Number(api_port.trim()) - 1;
       }
 
-      const token = config.telegram_bot_token;
-      const chatId = config.telegram_chat_id;
-      const telegramApiUrl = `https://api.telegram.org/bot${token}/sendMessage`;
       let messageText;
       if (typeof label === 'undefined') {
         messageText = `${emoji_title}<b> FluxNode Watchdog </b>${emoji_title}\n----------------------------------------\n<b>Type: </b>${info_type}\n<b>URL:</b> http://${node_ip}:${ui_port}\n<b>${field_type}</b>${msg_text}`;
@@ -779,10 +745,10 @@ async function send_telegram_msg(emoji_title, info_type, field_type, msg_text, l
         messageText = `${emoji_title}<b> FluxNode Watchdog </b>${emoji_title}\n----------------------------------------\n<b>Type: </b>${info_type}\n<b>Name: </b>${label}\n<b>URL:</b> http://${node_ip}:${ui_port}\n<b>${field_type}</b>${msg_text}`;
       }
 
-      await axios.post(telegramApiUrl, {
-        chat_id: chatId,
+      await sendTelegram({
+        token: config.telegram_bot_token,
+        chatId: config.telegram_chat_id,
         text: messageText,
-        parse_mode: 'HTML',
       });
 
       console.log('Telegram webhook message sent successfully');
