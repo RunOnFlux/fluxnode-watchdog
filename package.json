@@ -4,7 +4,6 @@
   "description": "Watchdog for fluxnode",
   "main": "watchdog.js",
   "dependencies": {
-    "@prince25/discord-webhook-sender": "~1.2.3",
     "axios": "~1.8.4",
     "moment": "~2.30.1",
     "webhook-discord": "~3.7.8"
