@@ -2,8 +2,9 @@
  * Runs FluxOS's CloudUI update (`npm run update:cloudui -- <api-base-url>`).
  *
  * The update downloads a release tarball of about 55 MB, so the timeout is sized for a
- * slow link. The update runs in its own process group and a timeout kills the whole
- * group: killing only the first process leaves the download running on its own.
+ * slow link. The update runs in its own process group. A timeout sends the whole group
+ * SIGTERM, so the update can remove its own files, and SIGKILL once the grace period has
+ * passed: signalling only the first process leaves the download running on its own.
  *
  * The update's temporary files go in one scratch directory the watchdog owns
  * (`TMPDIR`), emptied before and after every run. A run cut short by the watchdog
@@ -17,6 +18,7 @@ const os = require('os');
 const path = require('node:path');
 
 const CLOUDUI_UPDATE_TIMEOUT_MS = 10 * 60 * 1000;
+const CLOUDUI_UPDATE_GRACE_MS = 10 * 1000;
 const CLOUDUI_SCRATCH_DIR = path.join(os.tmpdir(), 'fluxwatchdog-cloudui');
 const MAX_OUTPUT_CHARS = 4000;
 
@@ -24,9 +26,9 @@ function clearScratch(scratchDir) {
   fs.rmSync(scratchDir, { recursive: true, force: true });
 }
 
-function killGroup(pid) {
+function signalGroup(pid, signal) {
   try {
-    process.kill(-pid, 'SIGKILL');
+    process.kill(-pid, signal);
   } catch {
     // ESRCH: every process in the group has already exited.
   }
@@ -37,6 +39,7 @@ function killGroup(pid) {
  * @param {string} options.fluxOsRootDir - FluxOS checkout the update runs in.
  * @param {string} options.apiBaseUrl - GitHub API host the update reads the release from.
  * @param {number} [options.timeoutMs]
+ * @param {number} [options.graceMs] - Time from SIGTERM to SIGKILL after a timeout.
  * @param {string} [options.scratchDir] - Directory given to the update as TMPDIR.
  * @param {string[]} [options.command] - Command and arguments; defaults to the npm script.
  * @returns {Promise<{ok: boolean, timedOut: boolean, code: number|null,
@@ -46,6 +49,7 @@ function runCloudUiUpdate({
   fluxOsRootDir,
   apiBaseUrl,
   timeoutMs = CLOUDUI_UPDATE_TIMEOUT_MS,
+  graceMs = CLOUDUI_UPDATE_GRACE_MS,
   scratchDir = CLOUDUI_SCRATCH_DIR,
   command = ['npm', 'run', 'update:cloudui', '--', apiBaseUrl],
 }) {
@@ -57,11 +61,13 @@ function runCloudUiUpdate({
     let timedOut = false;
     let spawnError = null;
     let settled = false;
+    let graceTimer = null;
 
     const finish = (code, signal) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      clearTimeout(graceTimer);
       clearScratch(scratchDir);
       resolve({
         ok: !timedOut && !spawnError && code === 0,
@@ -88,7 +94,8 @@ function runCloudUiUpdate({
 
     const timer = setTimeout(() => {
       timedOut = true;
-      killGroup(child.pid);
+      signalGroup(child.pid, 'SIGTERM');
+      graceTimer = setTimeout(() => signalGroup(child.pid, 'SIGKILL'), graceMs);
     }, timeoutMs);
 
     child.on('error', (error) => {
@@ -96,7 +103,10 @@ function runCloudUiUpdate({
       finish(null, null);
     });
     // Anything the update left running in its group is stopped once the update exits.
-    child.on('exit', () => killGroup(child.pid));
+    // After a timeout the group is still removing its files, and the grace timer stops it.
+    child.on('exit', () => {
+      if (!timedOut) signalGroup(child.pid, 'SIGKILL');
+    });
     child.on('close', finish);
   });
 }
@@ -118,5 +128,6 @@ module.exports = {
   runCloudUiUpdate,
   failureReason,
   CLOUDUI_UPDATE_TIMEOUT_MS,
+  CLOUDUI_UPDATE_GRACE_MS,
   CLOUDUI_SCRATCH_DIR,
 };
