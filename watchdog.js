@@ -17,7 +17,7 @@ const { compareVersions } = require('./versions');
 const { discordPayload, sendDiscord, sendTelegram } = require('./alerts');
 const { simulateInstallCommand, aptInstallPlan, updateServices } = require('./apt_plan');
 const { runSyncCheck } = require('./fluxd_chain');
-const { runCloudUiUpdate, failureReason } = require('./cloudui_update');
+const { startCloudUiUpdate, failureReason } = require('./cloudui_update');
 
 const execFilePromise = promisify(execFile);
 
@@ -222,16 +222,20 @@ function cloudUiApiBaseUrl() {
   }
 }
 
-// Runs FluxOS's CloudUI update, and logs why when it fails.
-async function updateCloudUI(apiBaseUrl) {
-  const result = await runCloudUiUpdate({ fluxOsRootDir, apiBaseUrl });
-  if (!result.ok) {
-    console.log(`CloudUI update failed: ${failureReason(result)}`);
-    const lastLines = result.output.trim().split('\n').slice(-5).join('\n');
-    if (lastLines) console.log(lastLines);
-  }
+// Starts FluxOS's CloudUI update in the background and returns at once. When the update
+// ends, onSuccess runs if it succeeded, and why it failed is logged if it did not.
+function updateCloudUI(apiBaseUrl, onSuccess) {
+  const started = startCloudUiUpdate({ fluxOsRootDir, apiBaseUrl }, (result) => {
+    if (!result.ok) {
+      console.log(`CloudUI update failed: ${failureReason(result)}`);
+      const lastLines = result.output.trim().split('\n').slice(-5).join('\n');
+      if (lastLines) console.log(lastLines);
 
-  return result.ok;
+      return;
+    }
+    onSuccess();
+  });
+  if (!started) console.log('CloudUI update already running, not starting another.');
 }
 
 async function checkCloudUI() {
@@ -254,9 +258,7 @@ async function checkCloudUI() {
       return;
     }
     console.log(`checkCloudUI: FluxOS version ${version} >= 8.0.0. Downloading CloudUI...`);
-    if (await updateCloudUI(apiBaseUrl)) {
-      console.log('checkCloudUI: CloudUI download completed.');
-    }
+    updateCloudUI(apiBaseUrl, () => console.log('checkCloudUI: CloudUI download completed.'));
   } else {
     console.log('checkCloudUI: FluxOS version < 8.0.0 or not detected. Skipping CloudUI download.');
   }
@@ -1097,17 +1099,17 @@ async function auto_update() {
       if (!cloudui_api_base_url) {
         console.log('No API host available, skipping the FluxCloud UI update.');
       } else {
-        await updateCloudUI(cloudui_api_base_url);
+        updateCloudUI(cloudui_api_base_url, () => {
+          const cloudui_lv = fs.existsSync(cloudui_local_version_file)
+            ? fs.readFileSync(cloudui_local_version_file, 'utf8').trim()
+            : '';
+          if (cloudui_remote_hash == cloudui_lv) {
+            console.log('FluxCloud UI updated successfully.');
+          } else {
+            console.log('FluxCloud UI update ended, but the installed version is not the release.');
+          }
+        });
       }
-      await sleep(5 * 1_000);
-      let cloudui_lv = '';
-      if (fs.existsSync(cloudui_local_version_file)) {
-        cloudui_lv = fs.readFileSync(cloudui_local_version_file, 'utf8').trim();
-      }
-      if (cloudui_remote_hash == cloudui_lv) {
-        console.log('Update successfully.');
-      }
-      await sleep(20 * 1_000);
       console.log(' ');
     }
   }

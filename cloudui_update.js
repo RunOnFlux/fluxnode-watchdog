@@ -1,10 +1,12 @@
 /**
  * Runs FluxOS's CloudUI update (`npm run update:cloudui -- <api-base-url>`).
  *
- * The update downloads a release tarball of about 55 MB, so the timeout is sized for a
- * slow link. The update runs in its own process group. A timeout sends the whole group
- * SIGTERM, so the update can remove its own files, and SIGKILL once the grace period has
- * passed: signalling only the first process leaves the download running on its own.
+ * The update downloads a release tarball of about 60 MB, and a slow link takes hours, so
+ * the update runs in the background (`startCloudUiUpdate`), one at a time, and the
+ * timeout only stops a download that never finishes: 6 hours is 60 MB at under 3 KB/s.
+ * The update runs in its own process group. A timeout sends the whole group SIGTERM, so
+ * the update can remove its own files, and SIGKILL once the grace period has passed:
+ * signalling only the first process leaves the download running on its own.
  *
  * The update's temporary files go in one scratch directory the watchdog owns
  * (`TMPDIR`), emptied before and after every run. A run cut short by the watchdog
@@ -17,10 +19,13 @@ const fs = require('fs');
 const os = require('os');
 const path = require('node:path');
 
-const CLOUDUI_UPDATE_TIMEOUT_MS = 10 * 60 * 1000;
+const CLOUDUI_UPDATE_TIMEOUT_MS = 6 * 60 * 60 * 1000;
 const CLOUDUI_UPDATE_GRACE_MS = 10 * 1000;
 const CLOUDUI_SCRATCH_DIR = path.join(os.tmpdir(), 'fluxwatchdog-cloudui');
 const MAX_OUTPUT_CHARS = 4000;
+
+// The update in progress, if there is one.
+let running = null;
 
 function clearScratch(scratchDir) {
   fs.rmSync(scratchDir, { recursive: true, force: true });
@@ -112,12 +117,31 @@ function runCloudUiUpdate({
 }
 
 /**
+ * Starts an update in the background unless one is already running, and calls onDone
+ * with its result when it ends.
+ * @param {object} options - As for runCloudUiUpdate.
+ * @param {function(object): void} onDone
+ * @returns {Promise<void>|null} The started update, or null when one is already running.
+ */
+function startCloudUiUpdate(options, onDone) {
+  if (running) return null;
+  running = runCloudUiUpdate(options)
+    .then(onDone)
+    .catch((error) => console.log(`CloudUI update: ${error.message}`))
+    .finally(() => {
+      running = null;
+    });
+
+  return running;
+}
+
+/**
  * Why an update that did not succeed failed, for the log.
  * @param {{timedOut: boolean, error: Error|null, signal: string|null, code: number|null}} result
  * @returns {string}
  */
 function failureReason(result) {
-  if (result.timedOut) return `timed out after ${CLOUDUI_UPDATE_TIMEOUT_MS / 60_000} minutes`;
+  if (result.timedOut) return `timed out after ${CLOUDUI_UPDATE_TIMEOUT_MS / 3_600_000} hours`;
   if (result.error) return result.error.message;
   if (result.signal) return `killed by ${result.signal}`;
 
@@ -126,6 +150,7 @@ function failureReason(result) {
 
 module.exports = {
   runCloudUiUpdate,
+  startCloudUiUpdate,
   failureReason,
   CLOUDUI_UPDATE_TIMEOUT_MS,
   CLOUDUI_UPDATE_GRACE_MS,

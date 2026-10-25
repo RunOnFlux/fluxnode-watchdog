@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('node:path');
 
-const { runCloudUiUpdate, failureReason } = require('../cloudui_update');
+const { runCloudUiUpdate, startCloudUiUpdate, failureReason } = require('../cloudui_update');
 
 function tempDirs() {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cloudui-update-test-'));
@@ -64,7 +64,7 @@ test('a timeout kills every process the update started and removes its files', a
   });
   assert.strictEqual(result.ok, false);
   assert.strictEqual(result.timedOut, true);
-  assert.strictEqual(failureReason(result), 'timed out after 10 minutes');
+  assert.strictEqual(failureReason(result), 'timed out after 6 hours');
   const downloadPid = Number(fs.readFileSync(pidFile, 'utf8'));
   assert.ok(downloadPid > 0);
   await new Promise((r) => setTimeout(r, 200));
@@ -182,4 +182,64 @@ test('reports a command that cannot start', async () => {
   assert.ok(result.error);
   assert.strictEqual(failureReason(result), result.error.message);
   assert.strictEqual(fs.existsSync(scratchDir), false);
+});
+
+test('starts an update in the background and returns before it ends', async () => {
+  const { base, scratchDir } = tempDirs();
+  let result = null;
+  const started = startCloudUiUpdate(
+    {
+      fluxOsRootDir: base,
+      apiBaseUrl: 'https://api.github.com',
+      scratchDir,
+      command: ['sh', '-c', 'sleep 0.3; echo done'],
+    },
+    (r) => {
+      result = r;
+    },
+  );
+  assert.ok(started);
+  assert.strictEqual(result, null);
+  await started;
+  assert.strictEqual(result.ok, true);
+  assert.match(result.output, /done/);
+});
+
+test('does not start a second update while one is running, and starts one after it ends', async () => {
+  const { base, scratchDir } = tempDirs();
+  const runs = path.join(base, 'runs');
+  const options = {
+    fluxOsRootDir: base,
+    apiBaseUrl: 'https://api.github.com',
+    scratchDir,
+    command: ['sh', '-c', `echo run >> ${runs}; sleep 0.3`],
+  };
+  const first = startCloudUiUpdate(options, () => {});
+  assert.ok(first);
+  assert.strictEqual(
+    startCloudUiUpdate(options, () => {}),
+    null,
+  );
+  await first;
+  assert.strictEqual(fs.readFileSync(runs, 'utf8'), 'run\n');
+  const next = startCloudUiUpdate(options, () => {});
+  assert.ok(next);
+  await next;
+  assert.strictEqual(fs.readFileSync(runs, 'utf8'), 'run\nrun\n');
+});
+
+test('an update whose onDone throws still lets the next one start', async () => {
+  const { base, scratchDir } = tempDirs();
+  const options = {
+    fluxOsRootDir: base,
+    apiBaseUrl: 'https://api.github.com',
+    scratchDir,
+    command: ['sh', '-c', 'true'],
+  };
+  await startCloudUiUpdate(options, () => {
+    throw new Error('onDone failed');
+  });
+  const next = startCloudUiUpdate(options, () => {});
+  assert.ok(next);
+  await next;
 });
