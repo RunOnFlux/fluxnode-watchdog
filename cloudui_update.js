@@ -47,7 +47,7 @@ function signalGroup(pid, signal) {
  * @param {number} [options.graceMs] - Time from SIGTERM to SIGKILL after a timeout.
  * @param {string} [options.scratchDir] - Directory given to the update as TMPDIR.
  * @param {string[]} [options.command] - Command and arguments; defaults to the npm script.
- * @returns {Promise<{ok: boolean, timedOut: boolean, code: number|null,
+ * @returns {Promise<{ok: boolean, timedOut: boolean, timeoutMs: number, code: number|null,
  *   signal: string|null, error: Error|null, output: string}>}
  */
 function runCloudUiUpdate({
@@ -79,6 +79,7 @@ function runCloudUiUpdate({
       resolve({
         ok: !timedOut && !spawnError && code === 0,
         timedOut,
+        timeoutMs,
         code,
         signal,
         error: spawnError,
@@ -150,12 +151,30 @@ function startCloudUiUpdate(options, onDone) {
 }
 
 /**
+ * A duration in the largest whole unit that states it exactly.
+ * @param {number} ms
+ * @returns {string}
+ */
+function duration(ms) {
+  const units = [
+    [3_600_000, 'hour'],
+    [60_000, 'minute'],
+    [1_000, 'second'],
+  ];
+  const [size, name] = units.find(([unit]) => ms >= unit && ms % unit === 0) || [1, 'millisecond'];
+  const count = ms / size;
+
+  return `${count} ${name}${count === 1 ? '' : 's'}`;
+}
+
+/**
  * Why an update that did not succeed failed, for the log.
- * @param {{timedOut: boolean, error: Error|null, signal: string|null, code: number|null}} result
+ * @param {{timedOut: boolean, timeoutMs: number, error: Error|null, signal: string|null,
+ *   code: number|null}} result
  * @returns {string}
  */
 function failureReason(result) {
-  if (result.timedOut) return `timed out after ${CLOUDUI_UPDATE_TIMEOUT_MS / 3_600_000} hours`;
+  if (result.timedOut) return `timed out after ${duration(result.timeoutMs)}`;
   if (result.error) return result.error.message;
   if (result.signal) return `killed by ${result.signal}`;
 

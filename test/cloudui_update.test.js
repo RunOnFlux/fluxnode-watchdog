@@ -4,7 +4,12 @@ const fs = require('fs');
 const os = require('os');
 const path = require('node:path');
 
-const { runCloudUiUpdate, startCloudUiUpdate, failureReason } = require('../cloudui_update');
+const {
+  runCloudUiUpdate,
+  startCloudUiUpdate,
+  failureReason,
+  CLOUDUI_UPDATE_TIMEOUT_MS,
+} = require('../cloudui_update');
 
 function tempDirs() {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'cloudui-update-test-'));
@@ -64,7 +69,7 @@ test('a timeout kills every process the update started and removes its files', a
   });
   assert.strictEqual(result.ok, false);
   assert.strictEqual(result.timedOut, true);
-  assert.strictEqual(failureReason(result), 'timed out after 6 hours');
+  assert.strictEqual(failureReason(result), 'timed out after 500 milliseconds');
   const downloadPid = Number(fs.readFileSync(pidFile, 'utf8'));
   assert.ok(downloadPid > 0);
   await new Promise((r) => setTimeout(r, 200));
@@ -280,4 +285,12 @@ test('a background update whose scratch directory cannot be created ends with it
   const next = startCloudUiUpdate(options, () => {});
   assert.ok(next);
   await next;
+});
+
+test('states the time limit an update ran with', () => {
+  const timedOut = (timeoutMs) => failureReason({ timedOut: true, timeoutMs });
+  assert.strictEqual(timedOut(CLOUDUI_UPDATE_TIMEOUT_MS), 'timed out after 6 hours');
+  assert.strictEqual(timedOut(60_000), 'timed out after 1 minute');
+  assert.strictEqual(timedOut(90_000), 'timed out after 90 seconds');
+  assert.strictEqual(timedOut(1_500), 'timed out after 1500 milliseconds');
 });
