@@ -58,14 +58,12 @@ function runCloudUiUpdate({
   scratchDir = CLOUDUI_SCRATCH_DIR,
   command = ['npm', 'run', 'update:cloudui', '--', apiBaseUrl],
 }) {
-  clearScratch(scratchDir);
-  fs.mkdirSync(scratchDir, { recursive: true, mode: 0o700 });
-
   return new Promise((resolve) => {
     let output = '';
     let timedOut = false;
     let spawnError = null;
     let settled = false;
+    let timer = null;
     let graceTimer = null;
 
     const finish = (code, signal) => {
@@ -73,7 +71,11 @@ function runCloudUiUpdate({
       settled = true;
       clearTimeout(timer);
       clearTimeout(graceTimer);
-      clearScratch(scratchDir);
+      try {
+        clearScratch(scratchDir);
+      } catch {
+        // Left in place; the next run cannot prepare it either and reports why.
+      }
       resolve({
         ok: !timedOut && !spawnError && code === 0,
         timedOut,
@@ -83,6 +85,18 @@ function runCloudUiUpdate({
         output: output.slice(-MAX_OUTPUT_CHARS),
       });
     };
+
+    // A scratch directory that cannot be emptied or created fails the update before it
+    // starts.
+    try {
+      clearScratch(scratchDir);
+      fs.mkdirSync(scratchDir, { recursive: true, mode: 0o700 });
+    } catch (error) {
+      spawnError = error;
+      finish(null, null);
+
+      return;
+    }
 
     const child = spawn(command[0], command.slice(1), {
       cwd: fluxOsRootDir,
@@ -97,7 +111,7 @@ function runCloudUiUpdate({
     child.stdout.on('data', collect);
     child.stderr.on('data', collect);
 
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
       timedOut = true;
       signalGroup(child.pid, 'SIGTERM');
       graceTimer = setTimeout(() => signalGroup(child.pid, 'SIGKILL'), graceMs);

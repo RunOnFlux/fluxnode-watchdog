@@ -243,3 +243,41 @@ test('an update whose onDone throws still lets the next one start', async () => 
   assert.ok(next);
   await next;
 });
+
+test('reports a scratch directory that cannot be created as a failed update, and runs nothing', async () => {
+  const { base } = tempDirs();
+  const notADir = path.join(base, 'file');
+  fs.writeFileSync(notADir, 'x');
+  const ran = path.join(base, 'ran');
+  const result = await runCloudUiUpdate({
+    fluxOsRootDir: base,
+    apiBaseUrl: 'https://api.github.com',
+    scratchDir: path.join(notADir, 'scratch'),
+    command: ['sh', '-c', `touch ${ran}`],
+  });
+  assert.strictEqual(result.ok, false);
+  assert.ok(result.error);
+  assert.strictEqual(failureReason(result), result.error.message);
+  assert.strictEqual(fs.existsSync(ran), false);
+});
+
+test('a background update whose scratch directory cannot be created ends with its failure', async () => {
+  const { base } = tempDirs();
+  const notADir = path.join(base, 'file');
+  fs.writeFileSync(notADir, 'x');
+  const options = {
+    fluxOsRootDir: base,
+    apiBaseUrl: 'https://api.github.com',
+    scratchDir: path.join(notADir, 'scratch'),
+    command: ['sh', '-c', 'true'],
+  };
+  let result = null;
+  await startCloudUiUpdate(options, (r) => {
+    result = r;
+  });
+  assert.strictEqual(result.ok, false);
+  assert.ok(result.error);
+  const next = startCloudUiUpdate(options, () => {});
+  assert.ok(next);
+  await next;
+});
