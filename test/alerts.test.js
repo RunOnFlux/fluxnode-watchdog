@@ -64,7 +64,6 @@ test('a Discord payload carries the embed, and a label and a ping when given', (
         ['Error:', 'fluxd down'],
       ],
       color: '#EA1414',
-      thumbnailUrl: 'https://fluxnodeservice.com/images/error_icon.png',
     }),
     {
       username: 'Flux Watchdog',
@@ -76,7 +75,6 @@ test('a Discord payload carries the embed, and a label and a ping when given', (
             { name: 'Error:', value: 'fluxd down' },
           ],
           color: 0xea1414,
-          thumbnail: { url: 'https://fluxnodeservice.com/images/error_icon.png' },
         },
       ],
     },
@@ -85,7 +83,6 @@ test('a Discord payload carries the embed, and a label and a ping when given', (
     title: 't',
     fields: [['Name:', 'node1']],
     color: 3,
-    thumbnailUrl: 'u',
     ping: '1234',
   });
   assert.strictEqual(pinged.content, 'Ping: <@1234>');
@@ -95,7 +92,7 @@ test('a Discord payload carries the embed, and a label and a ping when given', (
 test('a Discord message is posted to the webhook', async () => {
   const server = await serve(noContent);
   try {
-    const payload = discordPayload({ title: 't', fields: [], color: 1, thumbnailUrl: 'u' });
+    const payload = discordPayload({ title: 't', fields: [], color: 1 });
     await sendDiscord(`${server.url}/api/webhooks/1/abc`, payload);
     assert.deepStrictEqual(server.requests, [
       { method: 'POST', url: '/api/webhooks/1/abc', body: payload },

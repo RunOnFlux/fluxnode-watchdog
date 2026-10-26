@@ -21,11 +21,11 @@ function formatColor(color) {
 /**
  * The webhook body for one Discord embed.
  * @param {{title: string, fields: Array<[string, string]>, color: string|number,
- *   thumbnailUrl: string, ping?: string}} message - `ping` is a Discord user id
+ *   ping?: string}} message - `ping` is a Discord user id
  *   mentioned above the embed.
  * @returns {object}
  */
-function discordPayload({ title, fields, color, thumbnailUrl, ping }) {
+function discordPayload({ title, fields, color, ping }) {
   const payload = {
     username: 'Flux Watchdog',
     embeds: [
@@ -33,7 +33,6 @@ function discordPayload({ title, fields, color, thumbnailUrl, ping }) {
         title,
         fields: fields.map(([name, value]) => ({ name, value })),
         color: formatColor(color),
-        thumbnail: { url: thumbnailUrl },
       },
     ],
   };
