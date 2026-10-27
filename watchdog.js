@@ -16,6 +16,7 @@ const { bandwidthReport } = require('./bandwidth_report');
 const { compareVersions } = require('./versions');
 const { discordPayload, sendDiscord, sendTelegram } = require('./alerts');
 const { simulateInstallCommand, aptInstallPlan, updateServices } = require('./apt_plan');
+const { runSyncCheck } = require('./fluxd_chain');
 
 const execFilePromise = promisify(execFile);
 
@@ -2069,12 +2070,12 @@ async function flux_check() {
     last_low_eps_benchmark_time = 0;
   }
   if (zelcash_height != '' && typeof zelcash_height !== 'undefined' && isNumber(zelcash_height)) {
-    const skip_sync = between(1, 4);
-    if (skip_sync > 2) {
-      await Check_Sync(zelcash_height, data_time_utc);
-    } else {
-      console.log('Sync check skipped: ' + skip_sync + ' <= 2');
-    }
+    await runSyncCheck({
+      roll: () => between(1, 4),
+      readChainInfo: () => runShellCommand(`${daemon_cli} getblockchaininfo`, { timeout: 60000 }),
+      checkSync: () => Check_Sync(zelcash_height, data_time_utc),
+      log: console.log,
+    });
   }
   console.log(
     '============================================================[' +
