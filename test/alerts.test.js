@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const http = require('node:http');
 
-const { discordPayload, sendDiscord, sendTelegram } = require('../alerts');
+const { isSet, discordPayload, sendDiscord, sendTelegram } = require('../alerts');
 
 // A local server; `answer(req, body, res)` decides the reply, or never replies.
 async function serve(answer) {
@@ -54,6 +54,13 @@ function settledWithin(send, ms) {
 const noContent = (res) => {
   res.writeHead(204).end();
 };
+
+test("an alert setting that is missing, '' or '0' is not set", () => {
+  for (const value of [undefined, '', '0']) assert.strictEqual(isSet(value), false, `${value}`);
+  for (const value of ['https://discord.com/api/webhooks/1/x', '1234', 'node1']) {
+    assert.strictEqual(isSet(value), true, value);
+  }
+});
 
 test('a Discord payload carries the embed, and a label and a ping when given', () => {
   assert.deepStrictEqual(
