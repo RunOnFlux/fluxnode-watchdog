@@ -19,6 +19,16 @@ function formatColor(color) {
 }
 
 /**
+ * Whether an optional alert setting (`web_hook_url`, `ping`, `label`) is set.
+ * A setting that is missing, '' or '0' is not.
+ * @param {string|undefined} value
+ * @returns {boolean}
+ */
+function isSet(value) {
+  return typeof value !== 'undefined' && value !== '' && value !== '0';
+}
+
+/**
  * The webhook body for one Discord embed.
  * @param {{title: string, fields: Array<[string, string]>, color: string|number,
  *   ping?: string}} message - `ping` is a Discord user id
@@ -73,4 +83,4 @@ async function sendTelegram({
   );
 }
 
-module.exports = { ALERT_TIMEOUT_MS, discordPayload, sendDiscord, sendTelegram };
+module.exports = { ALERT_TIMEOUT_MS, isSet, discordPayload, sendDiscord, sendTelegram };

@@ -14,7 +14,7 @@ const { waitForFluxOs } = require('./fluxos_ready');
 const { fluxosUnitStarting } = require('./fluxos_state');
 const { bandwidthReport } = require('./bandwidth_report');
 const { compareVersions } = require('./versions');
-const { discordPayload, sendDiscord, sendTelegram } = require('./alerts');
+const { isSet, discordPayload, sendDiscord, sendTelegram } = require('./alerts');
 const { simulateInstallCommand, aptInstallPlan, updateServices } = require('./apt_plan');
 const { runSyncCheck } = require('./fluxd_chain');
 const { startCloudUiUpdate, failureReason } = require('./cloudui_update');
@@ -334,7 +334,7 @@ async function discord_hook(
   thumbnail_png,
   label,
 ) {
-  if (typeof web_hook_url !== 'undefined' && web_hook_url !== '0') {
+  if (isSet(web_hook_url)) {
     try {
       const node_ip = await Myip();
       const { stdout: api_port } = await runShellCommand(
@@ -349,7 +349,7 @@ async function discord_hook(
       }
 
       const fields = [];
-      if (typeof label != 'undefined') fields.push(['Name:', `${label}`]);
+      if (isSet(label)) fields.push(['Name:', `${label}`]);
       fields.push(['URL:', `http://${node_ip}:${ui_port}`], [`${field_name}:`, node_msg]);
       await sendDiscord(
         web_hook_url,
@@ -357,7 +357,7 @@ async function discord_hook(
           title: `:loudspeaker: **FluxNode ${title}**`,
           fields,
           color,
-          ping: typeof ping == 'undefined' || ping == '0' ? undefined : ping,
+          ping: isSet(ping) ? ping : undefined,
         }),
       );
       console.log('Discord webhook message sent successfully');
@@ -564,10 +564,10 @@ async function initializeConfig() {
       console.log('Fix action:  disabled');
     }
 
-    if (typeof web_hook_url !== 'undefined' && web_hook_url !== '0') {
+    if (isSet(web_hook_url)) {
       console.log('Discord alert:  enabled');
 
-      if (typeof ping !== 'undefined' && ping !== '0') {
+      if (isSet(ping)) {
         console.log('Discord ping:  enabled');
       } else {
         console.log('Discord ping:  disabled');
@@ -576,7 +576,7 @@ async function initializeConfig() {
       console.log('Discord alert:  disabled');
     }
 
-    if (typeof telegram_alert !== 'undefined' && telegram_alert !== '0') {
+    if (telegram_alert == 1) {
       console.log('Telegram alert:  enabled');
     } else {
       console.log('Telegram alert:  disabled');
@@ -690,10 +690,10 @@ async function initializeConfig() {
       console.log('Fix action:  disabled');
     }
 
-    if (typeof web_hook_url !== 'undefined' && web_hook_url !== '0') {
+    if (isSet(web_hook_url)) {
       console.log('Discord alert:  enabled');
 
-      if (typeof ping !== 'undefined' && ping !== '0') {
+      if (isSet(ping)) {
         console.log('Discord ping:  enabled');
       } else {
         console.log('Discord ping:  disabled');
@@ -702,7 +702,7 @@ async function initializeConfig() {
       console.log('Discord alert:  disabled');
     }
 
-    if (typeof telegram_alert !== 'undefined' && telegram_alert !== '0') {
+    if (telegram_alert == 1) {
       console.log('Telegram alert:  enabled');
     } else {
       console.log('Telegram alert:  disabled');
@@ -738,7 +738,7 @@ async function initializeConfig() {
 async function send_telegram_msg(emoji_title, info_type, field_type, msg_text, label) {
   const telegram_alert = config.telegram_alert;
 
-  if (typeof telegram_alert !== 'undefined' && telegram_alert == 1) {
+  if (telegram_alert == 1) {
     try {
       const node_ip = await Myip();
       const { stdout: api_port } = await runShellCommand(
@@ -753,7 +753,7 @@ async function send_telegram_msg(emoji_title, info_type, field_type, msg_text, l
       }
 
       let messageText;
-      if (typeof label === 'undefined') {
+      if (!isSet(label)) {
         messageText = `${emoji_title}<b> FluxNode Watchdog </b>${emoji_title}\n----------------------------------------\n<b>Type: </b>${info_type}\n<b>URL:</b> http://${node_ip}:${ui_port}\n<b>${field_type}</b>${msg_text}`;
       } else {
         messageText = `${emoji_title}<b> FluxNode Watchdog </b>${emoji_title}\n----------------------------------------\n<b>Type: </b>${info_type}\n<b>Name: </b>${label}\n<b>URL:</b> http://${node_ip}:${ui_port}\n<b>${field_type}</b>${msg_text}`;
