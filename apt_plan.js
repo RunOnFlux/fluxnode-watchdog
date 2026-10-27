@@ -1,27 +1,27 @@
 /**
  * The simulation aptInstallPlan reads. It runs in the C locale, so apt's
  * messages, which aptInstallPlan matches, are the same on every node.
- * @param {string} pkg
+ * @param {string[]} pkgs - the packages installed together
  * @returns {string} shell command
  */
-function simulateInstallCommand(pkg) {
-  return `LC_ALL=C apt-get -s install ${pkg} < /dev/null`;
+function simulateInstallCommand(pkgs) {
+  return `LC_ALL=C apt-get -s install ${pkgs.join(' ')} < /dev/null`;
 }
 
 /**
- * What `apt-get -s install <pkg>` would do, read from its output.
+ * What `apt-get -s install <pkgs>` would do, read from its output.
  *
  * The simulation prints one line per action: `Inst <pkg> [<installed>] (<new> ...)`,
  * `Remv <pkg> [<installed>]` and `Conf ...`. A package whose dependencies apt
  * cannot meet (one released before the package it depends on) makes apt print
  * the unmet dependencies and exit non-zero.
  * @param {{error: Error|null, stdout: string, stderr: string}} result - the simulation's run
- * @param {string} pkg - the package asked for
+ * @param {string[]} pkgs - the packages asked for
  * @returns {{installable: boolean, installs: Object<string, string>, removes: string[], reason: string}}
- *   `installable` only when apt would install `pkg` and remove nothing; `reason`
- *   says why not, and is '' when it is.
+ *   `installable` only when apt would install every package in `pkgs` and
+ *   remove nothing; `reason` says why not, and is '' when it is.
  */
-function aptInstallPlan(result, pkg) {
+function aptInstallPlan(result, pkgs) {
   const installs = {};
   const removes = [];
   for (const line of (result.stdout || '').split('\n')) {
@@ -31,6 +31,7 @@ function aptInstallPlan(result, pkg) {
     if (remv) removes.push(remv[1]);
   }
 
+  const missing = pkgs.filter((pkg) => !installs[pkg]);
   let reason = '';
   if (result.error) {
     const unmet = (result.stdout + result.stderr)
@@ -42,8 +43,8 @@ function aptInstallPlan(result, pkg) {
       : `apt refused it: ${(result.stderr || result.error.message).trim().split('\n').pop()}`;
   } else if (removes.length) {
     reason = `apt would remove ${removes.join(', ')}`;
-  } else if (!installs[pkg]) {
-    reason = `apt would not install ${pkg}`;
+  } else if (missing.length) {
+    reason = `apt would not install ${missing.join(', ')}`;
   }
   return { installable: reason === '', installs, removes, reason };
 }

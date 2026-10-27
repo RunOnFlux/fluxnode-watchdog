@@ -47,21 +47,33 @@ Conf flux (9.2.0 localhost [amd64])
 const exit100 = Object.assign(new Error('Command failed: apt-get -s install flux'), { code: 100 });
 
 test('both released: installable, and both are installed together', () => {
-  const plan = aptInstallPlan({ error: null, stdout: BOTH_PUBLISHED, stderr: '' }, 'flux');
+  const plan = aptInstallPlan({ error: null, stdout: BOTH_PUBLISHED, stderr: '' }, ['flux']);
   assert.strictEqual(plan.installable, true);
   assert.strictEqual(plan.reason, '');
   assert.deepStrictEqual(plan.installs, { fluxbench: '6.5.0', flux: '9.2.0' });
   assert.deepStrictEqual(plan.removes, []);
 });
 
+test('packages asked for together are installable when apt installs every one', () => {
+  const plan = aptInstallPlan(ok(BOTH_PUBLISHED), ['flux', 'fluxbench']);
+  assert.strictEqual(plan.installable, true);
+  assert.deepStrictEqual(plan.installs, { fluxbench: '6.5.0', flux: '9.2.0' });
+});
+
+test('packages asked for together are not installable when apt leaves one out', () => {
+  const plan = aptInstallPlan(ok(FLUX_ALONE), ['flux', 'fluxbench']);
+  assert.strictEqual(plan.installable, false);
+  assert.strictEqual(plan.reason, 'apt would not install fluxbench');
+});
+
 test('a release whose dependency is not out yet is not installable', () => {
-  const plan = aptInstallPlan({ error: exit100, stdout: UNMET, stderr: '' }, 'flux');
+  const plan = aptInstallPlan({ error: exit100, stdout: UNMET, stderr: '' }, ['flux']);
   assert.strictEqual(plan.installable, false);
   assert.match(plan.reason, /Depends: fluxbench \(>= 6\.5\.0\)/);
 });
 
 test('an install that would remove a package is not installable', () => {
-  const plan = aptInstallPlan({ error: null, stdout: REMOVES, stderr: '' }, 'flux');
+  const plan = aptInstallPlan({ error: null, stdout: REMOVES, stderr: '' }, ['flux']);
   assert.strictEqual(plan.installable, false);
   assert.deepStrictEqual(plan.removes, ['fluxbench']);
   assert.match(plan.reason, /remove fluxbench/);
@@ -69,14 +81,14 @@ test('an install that would remove a package is not installable', () => {
 
 test('a plan that does not install the package asked for is not installable', () => {
   const stdout = `${SIMULATION}0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.\n`;
-  const plan = aptInstallPlan({ error: null, stdout, stderr: '' }, 'flux');
+  const plan = aptInstallPlan({ error: null, stdout, stderr: '' }, ['flux']);
   assert.strictEqual(plan.installable, false);
   assert.match(plan.reason, /would not install flux/);
 });
 
 test('apt failing without naming a dependency gives its last error line', () => {
   const stderr = 'E: Could not get lock /var/lib/dpkg/lock-frontend\n';
-  const plan = aptInstallPlan({ error: exit100, stdout: '', stderr }, 'flux');
+  const plan = aptInstallPlan({ error: exit100, stdout: '', stderr }, ['flux']);
   assert.strictEqual(plan.installable, false);
   assert.strictEqual(
     plan.reason,
@@ -95,16 +107,16 @@ Conf flux (9.1.1 localhost [amd64])
 `;
 
 test('on ArcaneOS an install of flux alone restarts fluxd only', () => {
-  assert.deepStrictEqual(updateServices(aptInstallPlan(ok(FLUX_ALONE), 'flux'), ARCANE), {
+  assert.deepStrictEqual(updateServices(aptInstallPlan(ok(FLUX_ALONE), ['flux']), ARCANE), {
     stop: [['stop', 'fluxd.service']],
     start: [['start', '--no-block', 'fluxd.service']],
   });
 });
 
 test('on ArcaneOS an install that upgrades fluxbench restarts fluxbenchd and starts FluxOS, whichever package was asked for', () => {
-  for (const pkg of ['flux', 'fluxbench']) {
+  for (const pkgs of [['flux'], ['fluxbench'], ['flux', 'fluxbench']]) {
     assert.deepStrictEqual(
-      updateServices(aptInstallPlan(ok(BOTH_PUBLISHED), pkg), ARCANE),
+      updateServices(aptInstallPlan(ok(BOTH_PUBLISHED), pkgs), ARCANE),
       {
         stop: [
           ['stop', 'fluxd.service'],
@@ -116,31 +128,39 @@ test('on ArcaneOS an install that upgrades fluxbench restarts fluxbenchd and sta
           ['start', '--no-block', 'fluxd.service'],
         ],
       },
-      pkg,
+      pkgs.join(' '),
     );
   }
 });
 
 test("on a legacy node every install restarts fluxd's service only", () => {
-  for (const [stdout, pkg] of [
-    [FLUX_ALONE, 'flux'],
-    [BOTH_PUBLISHED, 'flux'],
-    [BOTH_PUBLISHED, 'fluxbench'],
+  for (const [stdout, pkgs] of [
+    [FLUX_ALONE, ['flux']],
+    [BOTH_PUBLISHED, ['flux']],
+    [BOTH_PUBLISHED, ['fluxbench']],
+    [BOTH_PUBLISHED, ['flux', 'fluxbench']],
   ]) {
     assert.deepStrictEqual(
-      updateServices(aptInstallPlan(ok(stdout), pkg), LEGACY),
+      updateServices(aptInstallPlan(ok(stdout), pkgs), LEGACY),
       {
         stop: [['stop', 'zelcash.service']],
         start: [['start', '--no-block', 'zelcash.service']],
       },
-      pkg,
+      pkgs.join(' '),
     );
   }
 });
 
 test("the simulation runs in the C locale, so apt's messages are read the same on every node", () => {
   assert.strictEqual(
-    simulateInstallCommand('flux'),
+    simulateInstallCommand(['flux']),
     'LC_ALL=C apt-get -s install flux < /dev/null',
+  );
+});
+
+test('packages installed together are simulated in one run', () => {
+  assert.strictEqual(
+    simulateInstallCommand(['flux', 'fluxbench']),
+    'LC_ALL=C apt-get -s install flux fluxbench < /dev/null',
   );
 });

@@ -882,9 +882,9 @@ async function auto_update() {
     ).stdout.trim();
   // fluxd and fluxbench each require the other's matching release, so apt may
   // have one before the other: an update stops services only when apt would
-  // install the package and remove nothing.
-  const installPlan = async (pkg) =>
-    aptInstallPlan(await runShellCommand(simulateInstallCommand(pkg), { timeout: 120000 }), pkg);
+  // install the packages and remove nothing.
+  const installPlan = async (pkgs) =>
+    aptInstallPlan(await runShellCommand(simulateInstallCommand(pkgs), { timeout: 120000 }), pkgs);
   const systemctl = async (steps) => {
     for (const params of steps) {
       await runCommand('systemctl', { params, runAsRoot: true, timeout: 30000 });
@@ -1131,149 +1131,80 @@ async function auto_update() {
       console.log(' ');
     }
   }
-  // Flux daemon auto-update (always enabled for non-Arcane, config-dependent for Arcane)
-  if (!isArcane || config.zelcash_update == '1') {
-    const flux_versions = await aptVersions('flux');
-    const zelcash_remote_version = flux_versions.candidate;
-    const zelcash_local_version = flux_versions.installed;
-    console.log(
-      `Flux daemon current: ${zelcash_remote_version.trim()} installed: ${zelcash_local_version.trim()}`,
-    );
-    if (zelcash_remote_version.trim() != '' && zelcash_local_version.trim() != '') {
-      const flux_plan = flux_versions.upgrade ? await installPlan('flux') : null;
-      if (flux_plan && !flux_plan.installable) {
-        console.log(
-          `Flux daemon ${zelcash_remote_version.trim()} is not installed: ${flux_plan.reason}`,
-        );
-      } else if (flux_plan) {
-        component_update = 1;
-        console.log('New Flux daemon version detected:');
-        console.log('=================================================================');
-        console.log('Local version: ' + zelcash_local_version.trim());
-        console.log('Remote version: ' + zelcash_remote_version.trim());
-        const zelcash_dpkg_version_before = (
-          await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, {
-            timeout: 30000,
-          })
-        ).stdout;
-        const fluxbench_before_flux = await installedVersion('fluxbench');
-        const flux_services = updateServices(flux_plan, { isArcane, fluxdServiceName });
-        await systemctl(flux_services.stop);
-        if (!isArcane)
-          await runCommand('fuser', {
-            params: ['-k', '16125/tcp'],
-            runAsRoot: true,
-            timeout: 8000,
-            logError: false,
-          });
-        // A busy apt is waited for up to 300 s, and the command timeout allows for that wait on
-        // top of the install's own 180 s.
-        await runShellCommand(
-          'DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install flux -y < /dev/null',
-          { runAsRoot: true, timeout: 480000 },
-        );
-        const zelcash_dpkg_version_after = (
-          await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, {
-            timeout: 30000,
-          })
-        ).stdout;
-        await sleep(2 * 1_000);
-        await systemctl(flux_services.start);
-        // apt upgrades fluxbench with fluxd when fluxd's release requires it.
-        const fluxbench_after_flux = await installedVersion('fluxbench');
-        if (fluxbench_after_flux && fluxbench_after_flux !== fluxbench_before_flux) {
-          await announceFluxbenchUpdate(fluxbench_after_flux);
-        }
-        if (
-          zelcash_dpkg_version_before !== zelcash_dpkg_version_after &&
-          zelcash_dpkg_version_after != ''
-        ) {
-          await announceFluxdUpdate(zelcash_dpkg_version_after);
-          console.log('Update successfully.');
-          console.log(' ');
-          await sleep(2 * 1_000);
-        } else {
-          console.log('Script called.');
-          console.log(' ');
-          await sleep(2 * 1_000);
-        }
-      }
+  // fluxd and fluxbench auto-update (always enabled for non-Arcane, config-dependent for Arcane).
+  // Their upgrades are installed together, so fluxd is stopped and started once: a fluxd that is
+  // still starting cannot be stopped cleanly.
+  const daemonPackages = [
+    {
+      pkg: 'flux',
+      name: 'Flux daemon',
+      enabled: !isArcane || config.zelcash_update == '1',
+      announce: announceFluxdUpdate,
+    },
+    {
+      pkg: 'fluxbench',
+      name: 'Fluxbench',
+      enabled: !isArcane || config.zelbench_update == '1',
+      announce: announceFluxbenchUpdate,
+    },
+  ];
+  const updates = [];
+  for (const daemon of daemonPackages.filter((d) => d.enabled)) {
+    const versions = await aptVersions(daemon.pkg);
+    console.log(`${daemon.name} current: ${versions.candidate} installed: ${versions.installed}`);
+    if (!versions.upgrade) continue;
+    const plan = await installPlan([daemon.pkg]);
+    if (plan.installable) {
+      updates.push({ ...daemon, ...versions, plan });
+    } else {
+      console.log(`${daemon.name} ${versions.candidate} is not installed: ${plan.reason}`);
     }
   }
-
-  // Fluxbench auto-update (always enabled for non-Arcane, config-dependent for Arcane)
-  if (!isArcane || config.zelbench_update == '1') {
-    const fluxbench_versions = await aptVersions('fluxbench');
-    const zelbench_remote_version = fluxbench_versions.candidate;
-    const zelbench_local_version = fluxbench_versions.installed;
-
-    console.log(
-      `Fluxbench current: ${zelbench_remote_version.trim()} installed: ${zelbench_local_version.trim()}`,
+  const pkgs = updates.map((u) => u.pkg);
+  const plan = updates.length > 1 ? await installPlan(pkgs) : updates[0]?.plan;
+  if (plan && !plan.installable) {
+    console.log(`${pkgs.join(' and ')} are not installed together: ${plan.reason}`);
+  } else if (plan) {
+    component_update = 1;
+    for (const update of updates) {
+      console.log(`New ${update.name} version detected:`);
+      console.log('=================================================================');
+      console.log('Local version: ' + update.installed);
+      console.log('Remote version: ' + update.candidate);
+      console.log('=================================================================');
+    }
+    const before = {};
+    for (const daemon of daemonPackages) before[daemon.pkg] = await installedVersion(daemon.pkg);
+    const services = updateServices(plan, { isArcane, fluxdServiceName });
+    await systemctl(services.stop);
+    if (!isArcane)
+      await runCommand('fuser', {
+        params: ['-k', '16125/tcp'],
+        runAsRoot: true,
+        timeout: 8000,
+        logError: false,
+      });
+    // A busy apt is waited for up to 300 s, and the command timeout allows for that wait on
+    // top of the install's own 180 s.
+    await runShellCommand(
+      `DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install ${pkgs.join(' ')} -y < /dev/null`,
+      { runAsRoot: true, timeout: 480000 },
     );
-
-    if (zelbench_remote_version.trim() != '' && zelbench_local_version.trim() != '') {
-      const fluxbench_plan = fluxbench_versions.upgrade ? await installPlan('fluxbench') : null;
-      if (fluxbench_plan && !fluxbench_plan.installable) {
-        console.log(
-          `Fluxbench ${zelbench_remote_version.trim()} is not installed: ${fluxbench_plan.reason}`,
-        );
-      } else if (fluxbench_plan) {
-        component_update = 1;
-        console.log('New Fluxbench version detected:');
-        console.log('=================================================================');
-        console.log('Local version: ' + zelbench_local_version.trim());
-        console.log('Remote version: ' + zelbench_remote_version.trim());
-        console.log('=================================================================');
-
-        const zelbench_dpkg_version_before = (
-          await runShellCommand(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`, {
-            timeout: 30000,
-          })
-        ).stdout;
-        const flux_before_fluxbench = await installedVersion('flux');
-        const fluxbench_services = updateServices(fluxbench_plan, { isArcane, fluxdServiceName });
-        await systemctl(fluxbench_services.stop);
-        if (!isArcane)
-          await runCommand('fuser', {
-            params: ['-k', '16125/tcp'],
-            runAsRoot: true,
-            timeout: 8000,
-            logError: false,
-          });
-        await runShellCommand(
-          'DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install fluxbench -y < /dev/null',
-          { runAsRoot: true, timeout: 480000 },
-        );
-        await sleep(2 * 1_000);
-        await systemctl(fluxbench_services.start);
-
-        const zelbench_dpkg_version_after = (
-          await runShellCommand(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`, {
-            timeout: 30000,
-          })
-        ).stdout;
-        // apt upgrades fluxd with fluxbench when fluxbench's release requires it.
-        const flux_after_fluxbench = await installedVersion('flux');
-        if (flux_after_fluxbench && flux_after_fluxbench !== flux_before_fluxbench) {
-          await announceFluxdUpdate(flux_after_fluxbench);
-        }
-
-        if (
-          zelbench_dpkg_version_before !== zelbench_dpkg_version_after &&
-          zelbench_dpkg_version_after != ''
-        ) {
-          await announceFluxbenchUpdate(zelbench_dpkg_version_after);
-
-          console.log('Update successfully.');
-          console.log(' ');
-          await sleep(2 * 1_000);
-        } else {
-          console.log('Script called.');
-          console.log(' ');
-          await sleep(2 * 1_000);
-        }
+    await sleep(2 * 1_000);
+    await systemctl(services.start);
+    // apt also upgrades a package the other one's release requires, so every package whose
+    // installed version changed is announced.
+    let updated = false;
+    for (const daemon of daemonPackages) {
+      const after = await installedVersion(daemon.pkg);
+      if (after && after !== before[daemon.pkg]) {
+        updated = true;
+        await daemon.announce(after);
       }
     }
+    console.log(updated ? 'Update successfully.' : 'Script called.');
+    console.log(' ');
+    await sleep(2 * 1_000);
   }
   console.log('=================================================================');
 }
