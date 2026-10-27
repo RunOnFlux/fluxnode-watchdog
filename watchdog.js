@@ -17,6 +17,7 @@ const { compareVersions } = require('./versions');
 const { discordPayload, sendDiscord, sendTelegram } = require('./alerts');
 const { simulateInstallCommand, aptInstallPlan, updateServices } = require('./apt_plan');
 const { runSyncCheck } = require('./fluxd_chain');
+const { startCloudUiUpdate, failureReason } = require('./cloudui_update');
 
 const execFilePromise = promisify(execFile);
 
@@ -221,6 +222,22 @@ function cloudUiApiBaseUrl() {
   }
 }
 
+// Starts FluxOS's CloudUI update in the background and returns at once. When the update
+// ends, onSuccess runs if it succeeded, and why it failed is logged if it did not.
+function updateCloudUI(apiBaseUrl, onSuccess) {
+  const started = startCloudUiUpdate({ fluxOsRootDir, apiBaseUrl }, (result) => {
+    if (!result.ok) {
+      console.log(`CloudUI update failed: ${failureReason(result)}`);
+      const lastLines = result.output.trim().split('\n').slice(-5).join('\n');
+      if (lastLines) console.log(lastLines);
+
+      return;
+    }
+    onSuccess();
+  });
+  if (!started) console.log('CloudUI update already running, not starting another.');
+}
+
 async function checkCloudUI() {
   const cloudUIDir = path.join(fluxOsRootDir, 'CloudUI');
   if (fs.existsSync(cloudUIDir)) {
@@ -241,10 +258,7 @@ async function checkCloudUI() {
       return;
     }
     console.log(`checkCloudUI: FluxOS version ${version} >= 8.0.0. Downloading CloudUI...`);
-    await runShellCommand(`cd ${fluxOsRootDir} && npm run update:cloudui -- ${apiBaseUrl}`, {
-      timeout: 120000,
-    });
-    console.log('checkCloudUI: CloudUI download completed.');
+    updateCloudUI(apiBaseUrl, () => console.log('checkCloudUI: CloudUI download completed.'));
   } else {
     console.log('checkCloudUI: FluxOS version < 8.0.0 or not detected. Skipping CloudUI download.');
   }
@@ -1034,10 +1048,11 @@ async function auto_update() {
     }
   }
   await checkCloudUI();
-  // FluxCloud UI version check (only if CloudUI is installed)
+  // FluxCloud UI version check (only if CloudUI is installed). A CloudUI without its
+  // version file has no installed hash, so it never matches the release and is updated.
   const cloudui_dir = path.join(fluxOsRootDir, 'CloudUI');
   const cloudui_local_version_file = path.join(cloudui_dir, 'version');
-  if (fs.existsSync(cloudui_dir) && fs.existsSync(cloudui_local_version_file)) {
+  if (fs.existsSync(cloudui_dir)) {
     const cloudui_release_info = (
       await runShellCommand(
         'curl -sS -m 10 https://api.github.com/repos/RunOnFlux/fluxos-frontend/releases/latest',
@@ -1061,7 +1076,9 @@ async function auto_update() {
       console.log('FluxCloud UI: Failed to parse release info');
     }
 
-    const cloudui_local_hash = fs.readFileSync(cloudui_local_version_file, 'utf8').trim();
+    const cloudui_local_hash = fs.existsSync(cloudui_local_version_file)
+      ? fs.readFileSync(cloudui_local_version_file, 'utf8').trim()
+      : '';
 
     console.log(
       `FluxCloud UI current: ${cloudui_remote_tag} (${cloudui_remote_hash.substring(0, 8) || 'N/A'}) installed: ${cloudui_local_hash.substring(0, 8) || 'N/A'}`,
@@ -1082,22 +1099,17 @@ async function auto_update() {
       if (!cloudui_api_base_url) {
         console.log('No API host available, skipping the FluxCloud UI update.');
       } else {
-        (
-          await runShellCommand(
-            `cd ${fluxOsRootDir} && npm run update:cloudui -- ${cloudui_api_base_url}`,
-            { timeout: 120000 },
-          )
-        ).stdout;
+        updateCloudUI(cloudui_api_base_url, () => {
+          const cloudui_lv = fs.existsSync(cloudui_local_version_file)
+            ? fs.readFileSync(cloudui_local_version_file, 'utf8').trim()
+            : '';
+          if (cloudui_remote_hash == cloudui_lv) {
+            console.log('FluxCloud UI updated successfully.');
+          } else {
+            console.log('FluxCloud UI update ended, but the installed version is not the release.');
+          }
+        });
       }
-      await sleep(5 * 1_000);
-      let cloudui_lv = '';
-      if (fs.existsSync(cloudui_local_version_file)) {
-        cloudui_lv = fs.readFileSync(cloudui_local_version_file, 'utf8').trim();
-      }
-      if (cloudui_remote_hash == cloudui_lv) {
-        console.log('Update successfully.');
-      }
-      await sleep(20 * 1_000);
       console.log(' ');
     }
   }
