@@ -4,7 +4,6 @@ const { promisify } = require('util');
 const { execFile } = require('child_process');
 const os = require('os');
 const moment = require('moment');
-const webhook = require('@prince25/discord-webhook-sender');
 const fs = require('fs');
 const fsPromises = require('fs/promises');
 const axios = require('axios');
@@ -15,6 +14,8 @@ const { waitForFluxOs } = require('./fluxos_ready');
 const { fluxosUnitStarting } = require('./fluxos_state');
 const { bandwidthReport } = require('./bandwidth_report');
 const { compareVersions } = require('./versions');
+const { discordPayload, sendDiscord, sendTelegram } = require('./alerts');
+const { simulateInstallCommand, aptInstallPlan, updateServices } = require('./apt_plan');
 
 const execFilePromise = promisify(execFile);
 
@@ -332,46 +333,18 @@ async function discord_hook(
         ui_port = Number(api_port.trim()) - 1;
       }
 
-      const Hook = new webhook.Webhook(`${web_hook_url}`);
-      Hook.setUsername('Flux Watchdog');
-
-      // Construct the message based on ping and label
-      let msg;
-      if (typeof ping == 'undefined' || ping == '0') {
-        if (typeof label == 'undefined') {
-          msg = new webhook.MessageBuilder()
-            .setTitle(`:loudspeaker: **FluxNode ${title}**`)
-            .addField('URL:', `http://${node_ip}:${ui_port}`)
-            .addField(`${field_name}:`, node_msg)
-            .setColor(`${color}`);
-        } else {
-          msg = new webhook.MessageBuilder()
-            .setTitle(`:loudspeaker: **FluxNode ${title}**`)
-            .addField('Name:', `${label}`)
-            .addField('URL:', `http://${node_ip}:${ui_port}`)
-            .addField(`${field_name}:`, node_msg)
-            .setColor(`${color}`);
-        }
-      } else {
-        if (typeof label == 'undefined') {
-          msg = new webhook.MessageBuilder()
-            .setTitle(`:loudspeaker: **FluxNode ${title}**`)
-            .addField('URL:', `http://${node_ip}:${ui_port}`)
-            .addField(`${field_name}:`, node_msg)
-            .setColor(`${color}`)
-            .setText(`Ping: <@${ping}>`);
-        } else {
-          msg = new webhook.MessageBuilder()
-            .setTitle(`:loudspeaker: **FluxNode ${title}**`)
-            .addField('Name:', `${label}`)
-            .addField('URL:', `http://${node_ip}:${ui_port}`)
-            .addField(`${field_name}:`, node_msg)
-            .setColor(`${color}`)
-            .setText(`Ping: <@${ping}>`);
-        }
-      }
-
-      await Hook.send(msg);
+      const fields = [];
+      if (typeof label != 'undefined') fields.push(['Name:', `${label}`]);
+      fields.push(['URL:', `http://${node_ip}:${ui_port}`], [`${field_name}:`, node_msg]);
+      await sendDiscord(
+        web_hook_url,
+        discordPayload({
+          title: `:loudspeaker: **FluxNode ${title}**`,
+          fields,
+          color,
+          ping: typeof ping == 'undefined' || ping == '0' ? undefined : ping,
+        }),
+      );
       console.log('Discord webhook message sent successfully');
     } catch (error) {
       console.error('Error sending Discord webhook message:', error.message);
@@ -764,9 +737,6 @@ async function send_telegram_msg(emoji_title, info_type, field_type, msg_text, l
         ui_port = Number(api_port.trim()) - 1;
       }
 
-      const token = config.telegram_bot_token;
-      const chatId = config.telegram_chat_id;
-      const telegramApiUrl = `https://api.telegram.org/bot${token}/sendMessage`;
       let messageText;
       if (typeof label === 'undefined') {
         messageText = `${emoji_title}<b> FluxNode Watchdog </b>${emoji_title}\n----------------------------------------\n<b>Type: </b>${info_type}\n<b>URL:</b> http://${node_ip}:${ui_port}\n<b>${field_type}</b>${msg_text}`;
@@ -774,10 +744,10 @@ async function send_telegram_msg(emoji_title, info_type, field_type, msg_text, l
         messageText = `${emoji_title}<b> FluxNode Watchdog </b>${emoji_title}\n----------------------------------------\n<b>Type: </b>${info_type}\n<b>Name: </b>${label}\n<b>URL:</b> http://${node_ip}:${ui_port}\n<b>${field_type}</b>${msg_text}`;
       }
 
-      await axios.post(telegramApiUrl, {
-        chat_id: chatId,
+      await sendTelegram({
+        token: config.telegram_bot_token,
+        chatId: config.telegram_chat_id,
         text: messageText,
-        parse_mode: 'HTML',
       });
 
       console.log('Telegram webhook message sent successfully');
@@ -835,6 +805,60 @@ async function auto_update() {
     : ':';
 
   const fluxOsPkgFile = path.join(fluxOsRootDir, 'package.json');
+
+  // A release (x.y.0) is announced; a patch is installed quietly.
+  const announceFluxdUpdate = async (version) => {
+    if (!version.trim().endsWith('.0')) return;
+    await discord_hook(
+      `Fluxnode daemon updated!\nVersion: **${version}**`,
+      web_hook_url,
+      ping,
+      'Update',
+      '#1F8B4C',
+      'Info',
+      'watchdog_update1.png',
+      label,
+    );
+    const emoji_title = '\u{23F0}';
+    const emoji_update = '\u{1F504}';
+    const info_type = 'New Update ' + emoji_update;
+    const field_type = 'Info: ';
+    const msg_text = 'Fluxnode Daemon updated! \n<b>Version: </b>' + version;
+    await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
+  };
+  const announceFluxbenchUpdate = async (version) => {
+    if (!version.trim().endsWith('.0')) return;
+    await discord_hook(
+      `Fluxnode benchmark updated!\nVersion: **${version}**`,
+      web_hook_url,
+      ping,
+      'Update',
+      '#1F8B4C',
+      'Info',
+      'watchdog_update1.png',
+      label,
+    );
+    const emoji_title = '\u{23F0}';
+    const emoji_update = '\u{1F504}';
+    const info_type = 'New Update ' + emoji_update;
+    const field_type = 'Info: ';
+    const msg_text = 'Fluxnode Benchmark updated! \n</pre><b>Version: </b>' + version;
+    await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
+  };
+  const installedVersion = async (pkg) =>
+    (
+      await runShellCommand(`dpkg-query -W -f='\${Version}' ${pkg}`, { timeout: 30000 })
+    ).stdout.trim();
+  // fluxd and fluxbench each require the other's matching release, so apt may
+  // have one before the other: an update stops services only when apt would
+  // install the packages and remove nothing.
+  const installPlan = async (pkgs) =>
+    aptInstallPlan(await runShellCommand(simulateInstallCommand(pkgs), { timeout: 120000 }), pkgs);
+  const systemctl = async (steps) => {
+    for (const params of steps) {
+      await runCommand('systemctl', { params, runAsRoot: true, timeout: 30000 });
+    }
+  };
 
   // apt decides what an update installs, so it also decides whether there is
   // one: its candidate is never below the installed version, so a candidate
@@ -1076,201 +1100,80 @@ async function auto_update() {
       console.log(' ');
     }
   }
-  // Flux daemon auto-update (always enabled for non-Arcane, config-dependent for Arcane)
-  if (!isArcane || config.zelcash_update == '1') {
-    const flux_versions = await aptVersions('flux');
-    const zelcash_remote_version = flux_versions.candidate;
-    const zelcash_local_version = flux_versions.installed;
-    console.log(
-      `Flux daemon current: ${zelcash_remote_version.trim()} installed: ${zelcash_local_version.trim()}`,
-    );
-    if (zelcash_remote_version.trim() != '' && zelcash_local_version.trim() != '') {
-      if (flux_versions.upgrade) {
-        component_update = 1;
-        console.log('New Flux daemon version detected:');
-        console.log('=================================================================');
-        console.log('Local version: ' + zelcash_local_version.trim());
-        console.log('Remote version: ' + zelcash_remote_version.trim());
-        const zelcash_dpkg_version_before = (
-          await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, {
-            timeout: 30000,
-          })
-        ).stdout;
-        await runCommand('systemctl', {
-          params: ['stop', fluxdServiceName],
-          runAsRoot: true,
-          timeout: 30000,
-        });
-        if (!isArcane)
-          await runCommand('fuser', {
-            params: ['-k', '16125/tcp'],
-            runAsRoot: true,
-            timeout: 8000,
-            logError: false,
-          });
-        // A busy apt is waited for up to 300 s, and the command timeout allows for that wait on
-        // top of the install's own 180 s.
-        await runShellCommand(
-          'DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install flux -y < /dev/null',
-          { runAsRoot: true, timeout: 480000 },
-        );
-        const zelcash_dpkg_version_after = (
-          await runShellCommand(`dpkg -l flux | grep -w flux | awk '{print $3}'`, {
-            timeout: 30000,
-          })
-        ).stdout;
-        await sleep(2 * 1_000);
-        await runCommand('systemctl', {
-          params: ['start', '--no-block', fluxdServiceName],
-          runAsRoot: true,
-          timeout: 30000,
-        });
-        if (
-          zelcash_dpkg_version_before !== zelcash_dpkg_version_after &&
-          zelcash_dpkg_version_after != ''
-        ) {
-          if (zelcash_dpkg_version_after.trim().endsWith('.0')) {
-            await discord_hook(
-              `Fluxnode daemon updated!\nVersion: **${zelcash_dpkg_version_after}**`,
-              web_hook_url,
-              ping,
-              'Update',
-              '#1F8B4C',
-              'Info',
-              'watchdog_update1.png',
-              label,
-            );
-            // Update notification daemon
-            const emoji_title = '\u{23F0}';
-            const emoji_update = '\u{1F504}';
-            const info_type = 'New Update ' + emoji_update;
-            const field_type = 'Info: ';
-            const msg_text =
-              'Fluxnode Daemon updated! \n<b>Version: </b>' + zelcash_dpkg_version_after;
-            await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
-          }
-          console.log('Update successfully.');
-          console.log(' ');
-          await sleep(2 * 1_000);
-        } else {
-          console.log('Script called.');
-          console.log(' ');
-          await sleep(2 * 1_000);
-        }
-      }
+  // fluxd and fluxbench auto-update (always enabled for non-Arcane, config-dependent for Arcane).
+  // Their upgrades are installed together, so fluxd is stopped and started once: a fluxd that is
+  // still starting cannot be stopped cleanly.
+  const daemonPackages = [
+    {
+      pkg: 'flux',
+      name: 'Flux daemon',
+      enabled: !isArcane || config.zelcash_update == '1',
+      announce: announceFluxdUpdate,
+    },
+    {
+      pkg: 'fluxbench',
+      name: 'Fluxbench',
+      enabled: !isArcane || config.zelbench_update == '1',
+      announce: announceFluxbenchUpdate,
+    },
+  ];
+  const updates = [];
+  for (const daemon of daemonPackages.filter((d) => d.enabled)) {
+    const versions = await aptVersions(daemon.pkg);
+    console.log(`${daemon.name} current: ${versions.candidate} installed: ${versions.installed}`);
+    if (!versions.upgrade) continue;
+    const plan = await installPlan([daemon.pkg]);
+    if (plan.installable) {
+      updates.push({ ...daemon, ...versions, plan });
+    } else {
+      console.log(`${daemon.name} ${versions.candidate} is not installed: ${plan.reason}`);
     }
   }
-
-  // Fluxbench auto-update (always enabled for non-Arcane, config-dependent for Arcane)
-  if (!isArcane || config.zelbench_update == '1') {
-    const fluxbench_versions = await aptVersions('fluxbench');
-    const zelbench_remote_version = fluxbench_versions.candidate;
-    const zelbench_local_version = fluxbench_versions.installed;
-
-    console.log(
-      `Fluxbench current: ${zelbench_remote_version.trim()} installed: ${zelbench_local_version.trim()}`,
+  const pkgs = updates.map((u) => u.pkg);
+  const plan = updates.length > 1 ? await installPlan(pkgs) : updates[0]?.plan;
+  if (plan && !plan.installable) {
+    console.log(`${pkgs.join(' and ')} are not installed together: ${plan.reason}`);
+  } else if (plan) {
+    component_update = 1;
+    for (const update of updates) {
+      console.log(`New ${update.name} version detected:`);
+      console.log('=================================================================');
+      console.log('Local version: ' + update.installed);
+      console.log('Remote version: ' + update.candidate);
+      console.log('=================================================================');
+    }
+    const before = {};
+    for (const daemon of daemonPackages) before[daemon.pkg] = await installedVersion(daemon.pkg);
+    const services = updateServices(plan, { isArcane, fluxdServiceName });
+    await systemctl(services.stop);
+    if (!isArcane)
+      await runCommand('fuser', {
+        params: ['-k', '16125/tcp'],
+        runAsRoot: true,
+        timeout: 8000,
+        logError: false,
+      });
+    // A busy apt is waited for up to 300 s, and the command timeout allows for that wait on
+    // top of the install's own 180 s.
+    await runShellCommand(
+      `DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install ${pkgs.join(' ')} -y < /dev/null`,
+      { runAsRoot: true, timeout: 480000 },
     );
-
-    if (zelbench_remote_version.trim() != '' && zelbench_local_version.trim() != '') {
-      if (fluxbench_versions.upgrade) {
-        component_update = 1;
-        console.log('New Fluxbench version detected:');
-        console.log('=================================================================');
-        console.log('Local version: ' + zelbench_local_version.trim());
-        console.log('Remote version: ' + zelbench_remote_version.trim());
-        console.log('=================================================================');
-
-        const zelbench_dpkg_version_before = (
-          await runShellCommand(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`, {
-            timeout: 30000,
-          })
-        ).stdout;
-        // For Arcane, we have to stop this as fluxd requires fluxbenchd, as it will
-        // start it if it's not present. (We need to remove this from fluxd source code)
-        await runCommand('systemctl', {
-          params: ['stop', fluxdServiceName],
-          runAsRoot: true,
-          timeout: 30000,
-        });
-        if (isArcane)
-          await runCommand('systemctl', {
-            params: ['stop', 'fluxbenchd.service'],
-            runAsRoot: true,
-            timeout: 30000,
-          });
-        if (!isArcane)
-          await runCommand('fuser', {
-            params: ['-k', '16125/tcp'],
-            runAsRoot: true,
-            timeout: 8000,
-            logError: false,
-          });
-        await runShellCommand(
-          'DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install fluxbench -y < /dev/null',
-          { runAsRoot: true, timeout: 480000 },
-        );
-        await sleep(2 * 1_000);
-        if (isArcane)
-          await runCommand('systemctl', {
-            params: ['start', 'fluxbenchd.service'],
-            runAsRoot: true,
-            timeout: 30000,
-          });
-        // An image whose fluxos.service requires fluxbenchd stopped FluxOS with it.
-        if (isArcane)
-          await runCommand('systemctl', {
-            params: ['start', '--no-block', 'fluxos.service'],
-            runAsRoot: true,
-            timeout: 30000,
-          });
-        await runCommand('systemctl', {
-          params: ['start', '--no-block', fluxdServiceName],
-          runAsRoot: true,
-          timeout: 30000,
-        });
-
-        const zelbench_dpkg_version_after = (
-          await runShellCommand(`dpkg -l fluxbench | grep -w fluxbench | awk '{print $3}'`, {
-            timeout: 30000,
-          })
-        ).stdout;
-
-        if (
-          zelbench_dpkg_version_before !== zelbench_dpkg_version_after &&
-          zelbench_dpkg_version_after != ''
-        ) {
-          if (zelbench_dpkg_version_after.trim().endsWith('.0')) {
-            await discord_hook(
-              `Fluxnode benchmark updated!\nVersion: **${zelbench_dpkg_version_after}**`,
-              web_hook_url,
-              ping,
-              'Update',
-              '#1F8B4C',
-              'Info',
-              'watchdog_update1.png',
-              label,
-            );
-
-            // Update notification benchmark telegram
-            const emoji_title = '\u{23F0}';
-            const emoji_update = '\u{1F504}';
-            const info_type = 'New Update ' + emoji_update;
-            const field_type = 'Info: ';
-            const msg_text =
-              'Fluxnode Benchmark updated! \n</pre><b>Version: </b>' + zelbench_dpkg_version_after;
-            await send_telegram_msg(emoji_title, info_type, field_type, msg_text, label);
-          }
-
-          console.log('Update successfully.');
-          console.log(' ');
-          await sleep(2 * 1_000);
-        } else {
-          console.log('Script called.');
-          console.log(' ');
-          await sleep(2 * 1_000);
-        }
+    await sleep(2 * 1_000);
+    await systemctl(services.start);
+    // apt also upgrades a package the other one's release requires, so every package whose
+    // installed version changed is announced.
+    let updated = false;
+    for (const daemon of daemonPackages) {
+      const after = await installedVersion(daemon.pkg);
+      if (after && after !== before[daemon.pkg]) {
+        updated = true;
+        await daemon.announce(after);
       }
     }
+    console.log(updated ? 'Update successfully.' : 'Script called.');
+    console.log(' ');
+    await sleep(2 * 1_000);
   }
   console.log('=================================================================');
 }
