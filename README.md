@@ -54,7 +54,7 @@ module.exports = {
 * Auto restart benchmark when "failed" or "taoster"
 * Auto restart when eps drop belown minim. limit for tier
 * Auto restart MongoDB when crash
-* Auto-update supported
+* Auto-update supported: a check every 1 to 4 hours, or within a minute when asked: `pm2 sendSignal SIGUSR2 watchdog`
 * KDA node monitoring and fixer
 * Logs in real time => type "pm2 monit" and select "watchdog"  
 * Log file with error events (~/watchdog/watchdog_error.log)

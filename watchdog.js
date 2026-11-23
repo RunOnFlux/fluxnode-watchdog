@@ -18,6 +18,7 @@ const { discordPayload, sendDiscord, sendTelegram } = require('./alerts');
 const { simulateInstallCommand, aptInstallPlan, updateServices } = require('./apt_plan');
 const { runSyncCheck } = require('./fluxd_chain');
 const { startCloudUiUpdate, failureReason } = require('./cloudui_update');
+const { createUpdateRequest, updateDue } = require('./update_request');
 
 const execFilePromise = promisify(execFile);
 
@@ -200,6 +201,11 @@ function between(min, max) {
 }
 
 let autoUpdate = between(60, 240); // auto update will now be different on each node and checks are defined between 1 and 4h.
+const updateRequest = createUpdateRequest();
+process.on('SIGUSR2', () => {
+  console.log('Update check asked for (SIGUSR2): it runs at the next pass of the job loop');
+  updateRequest.ask();
+});
 let cloudUIChecked = false;
 
 // The CloudUI fetch takes the API host as an argument rather than knowing one. FluxOS
@@ -272,7 +278,7 @@ async function job_creator() {
     }
     ++job_count;
 
-    if (job_count % autoUpdate === 0) {
+    if (updateDue(updateRequest, job_count, autoUpdate)) {
       await auto_update();
     }
     if (job_count % 4 === 0) {
