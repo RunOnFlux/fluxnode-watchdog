@@ -18,6 +18,7 @@ const { discordPayload, sendDiscord, sendTelegram } = require('./alerts');
 const { simulateInstallCommand, aptInstallPlan, updateServices } = require('./apt_plan');
 const { runSyncCheck } = require('./fluxd_chain');
 const { startCloudUiUpdate, failureReason } = require('./cloudui_update');
+const { updateFluxOs } = require('./fluxos_install');
 
 const execFilePromise = promisify(execFile);
 
@@ -814,10 +815,9 @@ async function auto_update() {
     ? 'systemctl restart flux-watchdog'
     : 'pm2 restart watchdog --watch';
 
-  const fluxOsInstallCmd = isArcane
-    ? // just use a dummy command here for non arcane
-      `cd ${fluxOsRootDir} && npm install --omit=dev --cache /dat/usr/lib/npm`
-    : ':';
+  // The flags every install on this node uses: legacy FluxOS installs at each start with
+  // --legacy-peer-deps, and ArcaneOS keeps npm's cache on /dat.
+  const fluxOsNpmArgs = isArcane ? ['--cache', '/dat/usr/lib/npm'] : ['--legacy-peer-deps'];
 
   const fluxOsPkgFile = path.join(fluxOsRootDir, 'package.json');
 
@@ -977,12 +977,9 @@ async function auto_update() {
         console.log('Remote version: ' + zelflux_remote_version.trim());
         console.log('=================================================================');
         // Fetch while FluxOS is still running: it is stopped only when the
-        // branch it is on has new commits to install.
+        // branch it is on has new commits and their dependencies are installed.
         const git = `git -C ${fluxOsRootDir}`;
         const { error: fetchError } = await runShellCommand(`${git} fetch`, { timeout: 120000 });
-        const { stdout: head_before } = await runShellCommand(`${git} rev-parse HEAD`, {
-          timeout: 5000,
-        });
         // Commits upstream that HEAD lacks; a branch's own local commits are not counted.
         const { stdout: behind } = await runShellCommand(`${git} rev-list --count HEAD..@{u}`, {
           timeout: 5000,
@@ -995,24 +992,29 @@ async function auto_update() {
           );
         } else {
           component_update = 1;
-          await runShellCommand(fluxOsStopCmd, { timeout: 30000 });
-          await sleep(5 * 1_000);
-          await runShellCommand(`cd ${fluxOsRootDir} && git checkout . && git pull -p`, {
-            timeout: 120000,
-          });
-          const { stdout: head_after } = await runShellCommand(`${git} rev-parse HEAD`, {
+          const { stdout: target } = await runShellCommand(`${git} rev-parse @{u}`, {
             timeout: 5000,
           });
-          if (head_after.trim() !== head_before.trim()) {
-            await sleep(5 * 1_000);
-            await runShellCommand(fluxOsInstallCmd, { timeout: 300000 });
-          } else {
-            console.log(
-              'FluxOS update failed: pull did not move HEAD, restarting the installed version',
-            );
+          const { stdout: target_version } = await runShellCommand(
+            `${git} show ${target.trim()}:package.json | jq -r '.version'`,
+            { timeout: 5000 },
+          );
+          console.log(
+            `Installing FluxOS ${target_version.trim()} dependencies beside the running one`,
+          );
+          const result = await updateFluxOs({
+            fluxOsRootDir,
+            commit: target.trim(),
+            version: target_version.trim(),
+            npmArgs: fluxOsNpmArgs,
+            stop: () => runShellCommand(fluxOsStopCmd, { timeout: 30000 }),
+            start: () => runShellCommand(fluxOsStartCmd, { timeout: 30000 }),
+            answersWith: fluxOsAnswersWith,
+          });
+          if (result.outcome !== 'updated') {
+            console.log(`FluxOS update not applied (${result.outcome}): ${result.reason}`);
+            if (result.output) console.log(result.output);
           }
-          if (isArcane) await sleep(5 * 1_000);
-          await runShellCommand(fluxOsStartCmd, { timeout: 30000 });
           await sleep(20 * 1_000);
           const zelflux_lv = (
             await runShellCommand(`jq -r '.version' ${fluxOsPkgFile}`, { timeout: 30000 })
@@ -2249,9 +2251,7 @@ async function main() {
   job_creator();
 }
 
-// FluxOS has to have answered once before it is judged; a FluxOS that never
-// answers is still checked after the longest hold.
-async function holdForFluxOs() {
+async function fluxOsVersionUrl() {
   let port = 16127;
   try {
     const { stdout: api_port } = await runShellCommand(
@@ -2262,16 +2262,48 @@ async function holdForFluxOs() {
   } catch (err) {
     console.error('Could not read the FluxOS api port, assuming 16127:', err);
   }
-  const url = `http://localhost:${port}/flux/version`;
-  console.log(`Waiting for FluxOS to answer on port ${port} before the first check`);
-  const { answered, waitedMs } = await waitForFluxOs(async () => {
-    try {
-      const res = await axios.get(url, { timeout: 5000 });
-      return Boolean(res.data && res.data.status === 'success');
-    } catch {
-      return false;
-    }
+
+  return `http://localhost:${port}/flux/version`;
+}
+
+/**
+ * Whether FluxOS's API answers, with `version` when one is given.
+ * @param {string} url
+ * @param {string} [version]
+ * @returns {Promise<boolean>}
+ */
+async function fluxOsAnswers(url, version) {
+  try {
+    const res = await axios.get(url, { timeout: 5000 });
+    if (!res.data || res.data.status !== 'success') return false;
+    return version === undefined || String(res.data.data).trim() === version;
+  } catch {
+    return false;
+  }
+}
+
+// An updated FluxOS that has not answered with its version within the hold is rolled back.
+async function fluxOsAnswersWith(version) {
+  const url = await fluxOsVersionUrl();
+  const { answered, waitedMs } = await waitForFluxOs(() => fluxOsAnswers(url, version), {
+    maxWaitMs: 10 * 60 * 1000,
   });
+  const seconds = Math.round(waitedMs / 1000);
+  console.log(
+    answered
+      ? `FluxOS ${version} answered after ${seconds} s`
+      : `FluxOS ${version} has not answered in ${seconds} s`,
+  );
+
+  return answered;
+}
+
+// FluxOS has to have answered once before it is judged; a FluxOS that never
+// answers is still checked after the longest hold.
+async function holdForFluxOs() {
+  const url = await fluxOsVersionUrl();
+  console.log(`Waiting for FluxOS to answer at ${url} before the first check`);
+  const { answered, waitedMs } = await waitForFluxOs(() => fluxOsAnswers(url));
   const seconds = Math.round(waitedMs / 1000);
   console.log(
     answered
